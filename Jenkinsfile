@@ -28,8 +28,8 @@ node {
     }
 
     stage('Kubernetes deploy') {
-        sh "kubectl delete -f /services/com-signage/test/app_con.yaml -n com-signage"
-        sh "kubectl apply -f /services/com-signage/test/app_con.yaml -n com-signage"
+        sh "kubectl delete -f /services/com-signage/app_con.yaml -n com-signage"
+        sh "kubectl apply -f /services/com-signage/app_con.yaml -n com-signage"
     }
 
     stage('Complete') {
