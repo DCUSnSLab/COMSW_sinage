@@ -1,0 +1,89 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Device {
+  id          String   @id @default(cuid())
+  name        String
+  location    String?
+  layoutMode  String   @default("FULL") // "FULL", "SPLIT", "SPLIT_H"
+  splitRatio  Int      @default(50)     // Percentage for Main Zone
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  playlists   DevicePlaylist[]
+}
+
+model Content {
+  id          String   @id @default(cuid())
+  title       String
+  type        String   // "TEXT", "IMAGE", "VIDEO"
+  url         String?  // For Image/Video
+  thumbnail   String?  // For Video Preview
+  body        String?  // For Text
+  duration    Int      @default(10) // Seconds
+  startDate   DateTime?
+  endDate     DateTime?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  
+  playlists   PlaylistContent[]
+}
+
+model Notice {
+  id          String   @id @default(cuid())
+  message     String
+  isActive    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Schedule {
+  id        String   @id @default(cuid())
+  date      DateTime
+  content   String
+  createdAt DateTime @default(now())
+}
+
+model Playlist {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  devices     DevicePlaylist[]
+  contents    PlaylistContent[]
+}
+
+// Many-to-Many Mappings with order
+model PlaylistContent {
+  id          String   @id @default(cuid())
+  playlistId  String
+  contentId   String
+  displayOrder Int
+  zone        String   @default("MAIN") // "MAIN" or "SUB" (for split screen)
+  
+  playlist    Playlist @relation(fields: [playlistId], references: [id])
+  content     Content  @relation(fields: [contentId], references: [id])
+}
+
+model DevicePlaylist {
+  id          String   @id @default(cuid())
+  deviceId    String
+  playlistId  String
+  isActive    Boolean  @default(true)
+  
+  device      Device   @relation(fields: [deviceId], references: [id])
+  playlist    Playlist @relation(fields: [playlistId], references: [id])
+}

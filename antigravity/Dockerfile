@@ -1,0 +1,83 @@
+
+FROM node:20-alpine AS base
+RUN apk add --no-cache libc6-compat openssl
+
+# Install dependencies only when needed
+FROM base AS deps
+WORKDIR /app
+
+# Install dependencies based on the preferred package manager
+COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
+RUN \
+  if [ -f yarn.lock ]; then yarn --frozen-lockfile; \
+  elif [ -f package-lock.json ]; then npm ci; \
+  elif [ -f pnpm-lock.yaml ]; then yarn global add pnpm && pnpm i --frozen-lockfile; \
+  else echo "Lockfile not found." && exit 1; \
+  fi
+
+
+# Rebuild the source code only when needed
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+# Next.js collects completely anonymous telemetry data about general usage.
+# Learn more here: https://nextjs.org/telemetry
+# Uncomment the following line in case you want to disable telemetry during the build.
+# ENV NEXT_TELEMETRY_DISABLED 1
+
+# Generate Prisma Client
+RUN npx prisma generate
+
+# Build time environment variables
+ARG DATABASE_URL
+ENV DATABASE_URL="postgresql://postgres:postgres@postgres:5432/signage?schema=public"
+
+RUN npm run build
+
+# If using npm comment out above and use below instead
+# RUN npm run build
+
+# Production image, copy all the files and run next
+FROM base AS runner
+WORKDIR /app
+
+ENV NODE_ENV production
+# Uncomment the following line in case you want to disable telemetry during runtime.
+# ENV NEXT_TELEMETRY_DISABLED 1
+
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+COPY --from=builder /app/public ./public
+
+# Automatically leverage output traces to reduce image size
+# https://nextjs.org/docs/advanced-features/output-file-tracing
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# Copy Prisma schema and entrypoint
+COPY --chown=nextjs:nodejs prisma ./prisma
+COPY --chown=nextjs:nodejs docker-entrypoint.sh ./
+
+# Create uploads directory and set permissions
+RUN mkdir -p public/uploads && chown -R nextjs:nodejs public/uploads
+
+# Install Prisma for runtime migrations
+RUN npm install prisma@5.22.0
+
+# Ensure nextjs user owns everything in /app
+RUN chown -R nextjs:nodejs /app
+
+# Make entrypoint executable
+RUN chmod +x docker-entrypoint.sh
+
+USER nextjs
+
+EXPOSE 3000
+
+ENV PORT 3000
+
+ENTRYPOINT ["./docker-entrypoint.sh"]
+CMD ["node", "server.js"]

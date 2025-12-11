@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: signage-config
+data:
+  NODE_ENV: "production"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: signage-secrets
+type: Opaque
+stringData:
+  # Base64 encoding is handled by kubectl apply if using stringData, or manually if using data
+  # Ideally, these should be managed by a secret manager or sealed secrets
+  DATABASE_URL: "postgresql://postgres:postgres@signage-postgres:5432/signage?schema=public"
+  REDIS_URL: "redis://signage-redis:6379"
