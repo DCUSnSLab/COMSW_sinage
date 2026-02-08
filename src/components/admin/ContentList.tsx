@@ -584,16 +584,24 @@ export function ContentList({ initialContents }: { initialContents: Content[] })
                                 {content.title}
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="py-0 pb-3 text-xs text-gray-500 flex justify-between items-center">
-                            <div className="flex gap-2">
+                        <CardContent className="py-0 pb-3 text-xs text-gray-500 flex flex-col gap-2">
+                            <div className="flex justify-between items-center">
                                 <span>{content.duration} sec</span>
+                                <span>{new Date(content.createdAt).toLocaleDateString()}</span>
+                            </div>
+
+                            <div className="flex flex-wrap gap-1">
                                 {content.source && (
-                                    <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-sm font-medium truncate max-w-[80px]" title={content.source}>
+                                    <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-sm font-medium truncate max-w-[100px]" title={content.source}>
                                         {content.source}
                                     </span>
                                 )}
+                                {(content as any).playlists?.map((p: any) => (
+                                    <span key={p.playlistId} className="bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded-sm font-medium truncate max-w-[100px]">
+                                        {p.playlist.name}
+                                    </span>
+                                ))}
                             </div>
-                            <span>{new Date(content.createdAt).toLocaleDateString()}</span>
                         </CardContent>
                     </Card>
                 ))}
