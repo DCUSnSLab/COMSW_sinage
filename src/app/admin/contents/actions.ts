@@ -2,8 +2,9 @@
 
 import { prisma } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
+import { writeFile, mkdir, unlink } from 'fs/promises';
+import { join, resolve } from 'path';
+import { spawn } from 'child_process';
 
 export async function createContent(formData: FormData) {
     const title = formData.get('title') as string;
@@ -56,6 +57,68 @@ export async function createContent(formData: FormData) {
         const tFilename = `thumb-${Date.now()}-${thumbnailFile.name.replace(/[^a-zA-Z0-9]/g, '')}.jpg`;
         await writeFile(join(tUploadDir, tFilename), tBuffer);
         thumbnailUrl = `/uploads/${tFilename}`;
+    } else {
+        thumbnailUrl = formData.get('thumbnailUrl') as string || '';
+    }
+
+    // Handle YouTube Download via Python (pytube)
+    let finalDuration = duration;
+
+    if (type === 'VIDEO' && (url.includes('youtube.com') || url.includes('youtu.be'))) {
+        try {
+            console.log('Processing YouTube Video (Python):', url);
+
+            const scriptPath = resolve(process.cwd(), 'src', 'scripts', 'download_youtube.py');
+            const uploadDir = join(process.cwd(), 'public', 'uploads');
+
+            // Promise wrapper for python script
+            const pythonResult = await new Promise<any>((resolve, reject) => {
+                const pyProcess = spawn('python', [scriptPath, url, uploadDir]);
+
+                let dataString = '';
+                let errorString = '';
+
+                pyProcess.stdout.on('data', (data) => {
+                    dataString += data.toString();
+                });
+
+                pyProcess.stderr.on('data', (data) => {
+                    errorString += data.toString();
+                });
+
+                pyProcess.on('close', (code) => {
+                    console.log('Python output:', dataString);
+                    console.log('Python stderr:', errorString);
+
+                    if (code !== 0) {
+                        reject(new Error(`Python script exited with code ${code}: ${errorString}`));
+                        return;
+                    }
+                    try {
+                        const jsonMatch = dataString.trim().match(/\{[\s\S]*\}$/);
+                        if (!jsonMatch) throw new Error('No JSON object found in stdout');
+                        const result = JSON.parse(jsonMatch[0]);
+                        resolve(result);
+                    } catch (e) {
+                        console.error("JSON Parse Error:", e);
+                        reject(new Error(`Failed to parse Python output: ${dataString}`));
+                    }
+                });
+            });
+
+            if (pythonResult.filename) {
+                console.log('Python Download Success:', pythonResult);
+                url = `/uploads/${pythonResult.filename}`;
+
+                if (pythonResult.duration) {
+                    finalDuration = Math.ceil(pythonResult.duration);
+                }
+            }
+
+        } catch (e) {
+            console.error('YouTube Python Processing Error:', e);
+            // Fallback: keep original URL if download fails
+        }
     }
 
     await prisma.content.create({
@@ -65,7 +128,7 @@ export async function createContent(formData: FormData) {
             url,
             thumbnail: thumbnailUrl,
             body,
-            duration,
+            duration: finalDuration,
             isActive: true, // Default active
         },
     });
@@ -74,7 +137,29 @@ export async function createContent(formData: FormData) {
 }
 
 export async function deleteContent(id: string) {
-    // Ideally delete file too, but skipping for MVP safety
+    // 1. Get content info to find file path
+    const content = await prisma.content.findUnique({
+        where: { id },
+    });
+
+    if (content) {
+        // Remove file if it's a local upload
+        if (content.url && content.url.startsWith('/uploads/')) {
+            const filepath = join(process.cwd(), 'public', content.url);
+            try {
+                await unlink(filepath);
+                console.log('Deleted file:', filepath);
+            } catch (e) {
+                console.error('Failed to delete file:', filepath, e);
+            }
+        }
+
+        // Remove thumbnail if it's local
+        if (content.thumbnail && content.thumbnail.startsWith('/uploads/')) {
+            const thumbPath = join(process.cwd(), 'public', content.thumbnail);
+            try { await unlink(thumbPath); } catch { }
+        }
+    }
 
     // First remove complications from any playlists
     await prisma.playlistContent.deleteMany({

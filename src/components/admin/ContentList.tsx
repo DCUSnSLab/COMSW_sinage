@@ -15,6 +15,15 @@ export function ContentList({ initialContents }: { initialContents: Content[] })
     const [searchTerm, setSearchTerm] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // YouTube Crawler State
+    const [isCrawlOpen, setIsCrawlOpen] = useState(false);
+    const [crawlUrl, setCrawlUrl] = useState('');
+    const [isCrawling, setIsCrawling] = useState(false);
+    const [crawledVideos, setCrawledVideos] = useState<any[]>([]);
+    const [savingVideoId, setSavingVideoId] = useState<string | null>(null);
+
+    const router = useRouter();
+
     // Helper to generate video thumbnail
     const generateThumbnail = async (file: File): Promise<File | null> => {
         return new Promise((resolve) => {
@@ -84,6 +93,51 @@ export function ContentList({ initialContents }: { initialContents: Content[] })
         }
     };
 
+    const handleCrawl = async () => {
+        if (!crawlUrl) return;
+        setIsCrawling(true);
+        setCrawledVideos([]);
+        try {
+            const res = await fetch('/api/crawl/youtube', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ channelUrl: crawlUrl })
+            });
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+            setCrawledVideos(data.videos || []);
+        } catch (e) {
+            alert('Failed to crawl: ' + (e as Error).message);
+        } finally {
+            setIsCrawling(false);
+        }
+    };
+
+    const handleSaveExternal = async (video: any) => {
+        setSavingVideoId(video.id);
+        const formData = new FormData();
+        formData.append('title', video.title);
+        formData.append('type', 'VIDEO');
+        formData.append('url', video.url);
+        formData.append('body', video.title || '');
+        formData.append('duration', '10'); // Default duration
+        if (video.thumbnail) {
+            formData.append('thumbnailUrl', video.thumbnail);
+        }
+
+        try {
+            await createContent(formData);
+            // Remove from list or mark done
+            setCrawledVideos(prev => prev.filter(v => v.id !== video.id));
+        } catch (e) {
+            console.error(e);
+            alert('Failed to save content');
+        } finally {
+            setSavingVideoId(null);
+        }
+    };
+
+
     // Filter contents
     const filteredContents = initialContents.filter(c =>
         c.title.toLowerCase().includes(searchTerm.toLowerCase())
@@ -101,14 +155,83 @@ export function ContentList({ initialContents }: { initialContents: Content[] })
                         onChange={e => setSearchTerm(e.target.value)}
                     />
                 </div>
-                <button
-                    onClick={() => setIsFormOpen(!isFormOpen)}
-                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Content
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => setIsCrawlOpen(true)}
+                        className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                    >
+                        <Film className="w-4 h-4 mr-2" />
+                        Crawl YouTube
+                    </button>
+                    <button
+                        onClick={() => setIsFormOpen(!isFormOpen)}
+                        className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                    >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Content
+                    </button>
+                </div>
             </div>
+
+            {/* YouTube Crawl Modal */}
+            {isCrawlOpen && (
+                <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+                    <Card className="w-full max-w-2xl bg-white max-h-[80vh] flex flex-col">
+                        <CardHeader>
+                            <CardTitle>YouTube Crawler (Keyword: 홍보)</CardTitle>
+                        </CardHeader>
+                        <CardContent className="flex flex-col flex-1 overflow-hidden space-y-4">
+                            <div className="flex gap-2">
+                                <input
+                                    className="flex-1 px-3 py-2 border rounded-md"
+                                    placeholder="Enter YouTube Channel URL (e.g. https://www.youtube.com/@ChannelName)"
+                                    value={crawlUrl}
+                                    onChange={e => setCrawlUrl(e.target.value)}
+                                />
+                                <button
+                                    onClick={handleCrawl}
+                                    disabled={isCrawling}
+                                    className="px-4 py-2 bg-red-600 text-white rounded-md whitespace-nowrap"
+                                >
+                                    {isCrawling ? 'Crawling...' : 'Search'}
+                                </button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto space-y-2 min-h-[300px] border rounded-md p-2">
+                                {crawledVideos.length === 0 && !isCrawling && (
+                                    <div className="text-center text-gray-500 mt-10">
+                                        Enter a channel URL to find videos with "홍보" in title/description.
+                                    </div>
+                                )}
+                                {crawledVideos.map(video => (
+                                    <div key={video.id} className="flex gap-4 p-2 border rounded-md hover:bg-gray-50">
+                                        <div className="w-32 h-20 bg-black flex-shrink-0">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img src={video.thumbnail} alt="" className="w-full h-full object-cover" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-medium truncate">{video.title}</div>
+                                            <div className="text-xs text-gray-500 mt-1 line-clamp-2">{video.description}</div>
+                                            <div className="text-xs text-gray-400 mt-1">{new Date(video.publishedAt).toLocaleDateString()}</div>
+                                        </div>
+                                        <button
+                                            onClick={() => handleSaveExternal(video)}
+                                            disabled={savingVideoId === video.id}
+                                            className="self-center px-3 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700"
+                                        >
+                                            {savingVideoId === video.id ? 'Adding...' : 'Add'}
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="flex justify-end pt-2">
+                                <button onClick={() => setIsCrawlOpen(false)} className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded-md">Close</button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
 
             {/* Create Form */}
             {isFormOpen && (
