@@ -73,7 +73,7 @@ export async function crawlYouTubeChannel(channelUrl: string) {
 }
 
 // Reusing/Refactoring logic from actions.ts
-export async function downloadAndSaveVideo(videoUrl: string, title: string, body: string, sourceName?: string) {
+export async function downloadAndSaveVideo(videoUrl: string, title: string, body: string, sourceName?: string, playlistId?: string) {
     try {
         console.log('Auto-Downloading:', videoUrl);
 
@@ -99,49 +99,58 @@ export async function downloadAndSaveVideo(videoUrl: string, title: string, body
                 if (errorString) console.log('Python stderr (Auto):', errorString);
 
                 if (code !== 0) {
-                    reject(new Error(`Python script exited with code ${code}: ${errorString}`));
+                    reject(new Error(`Python script exited with code ${code}`));
                     return;
                 }
+
                 try {
-                    const jsonMatch = dataString.trim().match(/\{[\s\S]*\}$/);
-                    if (!jsonMatch) throw new Error('No JSON object found in stdout');
-                    const result = JSON.parse(jsonMatch[0]);
+                    const result = JSON.parse(dataString);
                     resolve(result);
                 } catch (e) {
-                    reject(new Error(`Failed to parse Python output: ${dataString}`));
+                    reject(new Error('Failed to parse Python output'));
                 }
             });
         });
 
-        if (pythonResult.filename) {
-            const finalUrl = `/uploads/${pythonResult.filename}`;
-            const finalDuration = pythonResult.duration ? Math.ceil(pythonResult.duration) : 10;
-            const finalThumbnail = pythonResult.thumbnail || '';
-
-            // Check if already exists?
-            const existing = await prisma.content.findFirst({
-                where: { url: finalUrl }
-            });
-
-            if (!existing) {
-                await prisma.content.create({
-                    data: {
-                        title: title,
-                        type: 'VIDEO',
-                        url: finalUrl,
-                        thumbnail: finalThumbnail,
-                        body: body,
-                        duration: finalDuration,
-                        isActive: true,
-                        source: sourceName || 'Manual'
-                    }
-                });
-                console.log('Auto-Download Saved:', title);
-                return true;
+        // Save to DB
+        const content = await prisma.content.create({
+            data: {
+                title: pythonResult.title || title,
+                type: 'VIDEO',
+                url: `/uploads/${pythonResult.filename}`, // Local path
+                thumbnail: pythonResult.thumbnail,
+                body: body,
+                duration: pythonResult.duration || 10,
+                source: `YouTube: ${sourceName || 'Auto-Crawl'}`
             }
+        });
+
+        // 3. Auto-Assign to Playlist if provided
+        if (playlistId) {
+            // Get current max order
+            const lastItem = await prisma.playlistContent.findFirst({
+                where: { playlistId },
+                orderBy: { displayOrder: 'desc' }
+            });
+            const nextOrder = (lastItem?.displayOrder ?? 0) + 1;
+
+            await prisma.playlistContent.create({
+                data: {
+                    playlistId,
+                    contentId: content.id,
+                    displayOrder: nextOrder,
+                }
+            });
+            console.log(`[Auto-Crawl] Assigned video to playlist ${playlistId}`);
         }
+
+        revalidatePath('/admin/contents');
+        console.log('Auto-Download Success:', content.id);
+        return true;
+
     } catch (e) {
         console.error('Auto-Download Failed:', e);
         return false;
     }
 }
+

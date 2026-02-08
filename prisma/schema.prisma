@@ -65,6 +65,7 @@ model Playlist {
 
   devices     DevicePlaylist[]
   contents    PlaylistContent[]
+  crawlSettings CrawlSettings[]
 }
 
 // Many-to-Many Mappings with order
@@ -97,4 +98,7 @@ model CrawlSettings {
   checkInterval Int       @default(60) // in minutes
   lastCheckedAt DateTime?
   updatedAt     DateTime  @updatedAt
+  
+  playlistId    String?
+  playlist      Playlist? @relation(fields: [playlistId], references: [id])
 }

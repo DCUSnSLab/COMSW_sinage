@@ -201,25 +201,40 @@ export async function toggleContentStatus(id: string, isActive: boolean) {
 }
 
 // Multi-Channel Auto-Crawl Actions
-export async function getCrawlSettingsList() {
-    return await prisma.crawlSettings.findMany({
+export async function getPlaylists() {
+    return await prisma.playlist.findMany({
         orderBy: { updatedAt: 'desc' }
     });
 }
 
-export async function addCrawlSetting(name: string, channelUrl: string, checkInterval: number) {
+export async function getCrawlSettingsList() {
+    try {
+        return await prisma.crawlSettings.findMany({
+            orderBy: { updatedAt: 'desc' },
+            include: { playlist: true }
+        });
+    } catch (e) {
+        console.error("Failed to fetch with playlist relation, falling back to basic fetch:", e);
+        return await prisma.crawlSettings.findMany({
+            orderBy: { updatedAt: 'desc' }
+        });
+    }
+}
+
+export async function addCrawlSetting(name: string, channelUrl: string, checkInterval: number, playlistId?: string) {
     await prisma.crawlSettings.create({
         data: {
             name,
             channelUrl,
             checkInterval,
+            playlistId: playlistId || null,
             isActive: true // Default active on creation
         }
     });
     revalidatePath('/admin/contents');
 }
 
-export async function updateCrawlSetting(id: number, data: { name?: string, channelUrl?: string, checkInterval?: number, isActive?: boolean }) {
+export async function updateCrawlSetting(id: number, data: { name?: string, channelUrl?: string, checkInterval?: number, isActive?: boolean, playlistId?: string | null }) {
     await prisma.crawlSettings.update({
         where: { id },
         data

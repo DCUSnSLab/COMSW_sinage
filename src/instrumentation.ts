@@ -48,7 +48,7 @@ export async function register() {
 
                                 if (!exists) {
                                     console.log(`[${settings.name}] New video found: ${video.title}. Downloading...`);
-                                    await downloadAndSaveVideo(video.url, video.title, video.title, settings.name || settings.channelUrl);
+                                    await downloadAndSaveVideo(video.url, video.title, video.title, settings.name || settings.channelUrl, settings.playlistId || undefined);
                                 }
                             }
                         } catch (err) {
