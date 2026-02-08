@@ -24,6 +24,17 @@ export async function deletePlaylist(id: string) {
     revalidatePath('/admin/playlists');
 }
 
+export async function updatePlaylist(id: string, name: string, description: string) {
+    await prisma.playlist.update({
+        where: { id },
+        data: {
+            name,
+            description
+        }
+    });
+    revalidatePath('/admin/playlists');
+}
+
 export async function assignDeviceToPlaylist(deviceId: string, playlistId: string) {
     // Basic assignment: remove old, add new
     await prisma.devicePlaylist.deleteMany({
