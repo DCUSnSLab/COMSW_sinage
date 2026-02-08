@@ -35,6 +35,7 @@ model Content {
   startDate   DateTime?
   endDate     DateTime?
   isActive    Boolean  @default(true)
+  source      String?  // e.g. "YouTube: Channel Name" or "Manual"
   createdAt   DateTime @default(now())
   
   playlists   PlaylistContent[]
@@ -86,4 +87,14 @@ model DevicePlaylist {
   
   device      Device   @relation(fields: [deviceId], references: [id])
   playlist    Playlist @relation(fields: [playlistId], references: [id])
+}
+
+model CrawlSettings {
+  id            Int       @id @default(autoincrement())
+  name          String    @default("New Channel")
+  channelUrl    String    @default("")
+  isActive      Boolean   @default(false)
+  checkInterval Int       @default(60) // in minutes
+  lastCheckedAt DateTime?
+  updatedAt     DateTime  @updatedAt
 }

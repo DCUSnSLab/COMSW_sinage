@@ -46,7 +46,8 @@ def download_video(url, output_dir):
         result = {
             "filename": filename,
             "duration": duration,
-            "title": yt.title
+            "title": yt.title,
+            "thumbnail": yt.thumbnail_url
         }
         
         print(json.dumps(result))

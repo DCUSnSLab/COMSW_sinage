@@ -199,3 +199,37 @@ export async function toggleContentStatus(id: string, isActive: boolean) {
     });
     revalidatePath('/admin/contents');
 }
+
+// Multi-Channel Auto-Crawl Actions
+export async function getCrawlSettingsList() {
+    return await prisma.crawlSettings.findMany({
+        orderBy: { updatedAt: 'desc' }
+    });
+}
+
+export async function addCrawlSetting(name: string, channelUrl: string, checkInterval: number) {
+    await prisma.crawlSettings.create({
+        data: {
+            name,
+            channelUrl,
+            checkInterval,
+            isActive: true // Default active on creation
+        }
+    });
+    revalidatePath('/admin/contents');
+}
+
+export async function updateCrawlSetting(id: number, data: { name?: string, channelUrl?: string, checkInterval?: number, isActive?: boolean }) {
+    await prisma.crawlSettings.update({
+        where: { id },
+        data
+    });
+    revalidatePath('/admin/contents');
+}
+
+export async function deleteCrawlSetting(id: number) {
+    await prisma.crawlSettings.delete({
+        where: { id }
+    });
+    revalidatePath('/admin/contents');
+}

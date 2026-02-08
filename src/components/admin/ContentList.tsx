@@ -138,6 +138,74 @@ export function ContentList({ initialContents }: { initialContents: Content[] })
     };
 
 
+    // Auto-Crawl State
+    const [isAutoCrawlOpen, setIsAutoCrawlOpen] = useState(false);
+    const [crawlSettingsList, setCrawlSettingsList] = useState<any[]>([]);
+    const [isSettingsLoading, setIsSettingsLoading] = useState(false);
+
+    // New Channel Form State
+    const [newChannelName, setNewChannelName] = useState('');
+    const [newChannelUrl, setNewChannelUrl] = useState('');
+    const [newChannelInterval, setNewChannelInterval] = useState(60);
+
+    const loadCrawlSettings = async () => {
+        setIsSettingsLoading(true);
+        try {
+            const { getCrawlSettingsList } = await import('@/app/admin/contents/actions');
+            const list = await getCrawlSettingsList();
+            setCrawlSettingsList(list);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsSettingsLoading(false);
+        }
+    };
+
+    const handleOpenAutoCrawl = () => {
+        setIsAutoCrawlOpen(true);
+        loadCrawlSettings();
+    };
+
+    const handleAddChannel = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSettingsLoading(true);
+        try {
+            const { addCrawlSetting } = await import('@/app/admin/contents/actions');
+            await addCrawlSetting(newChannelName, newChannelUrl, newChannelInterval);
+            await loadCrawlSettings();
+            // Reset form
+            setNewChannelName('');
+            setNewChannelUrl('');
+            setNewChannelInterval(60);
+        } catch (e) {
+            alert('Failed to add channel');
+        } finally {
+            setIsSettingsLoading(false);
+        }
+    };
+
+    const handleToggleChannel = async (id: number, currentStatus: boolean) => {
+        try {
+            const { updateCrawlSetting } = await import('@/app/admin/contents/actions');
+            await updateCrawlSetting(id, { isActive: !currentStatus });
+            await loadCrawlSettings();
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const handleDeleteChannel = async (id: number) => {
+        if (!confirm('Are you sure you want to delete this channel?')) return;
+        try {
+            const { deleteCrawlSetting } = await import('@/app/admin/contents/actions');
+            await deleteCrawlSetting(id);
+            await loadCrawlSettings();
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+
     // Filter contents
     const filteredContents = initialContents.filter(c =>
         c.title.toLowerCase().includes(searchTerm.toLowerCase())
@@ -157,6 +225,13 @@ export function ContentList({ initialContents }: { initialContents: Content[] })
                 </div>
                 <div className="flex gap-2">
                     <button
+                        onClick={handleOpenAutoCrawl}
+                        className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+                    >
+                        <Power className="w-4 h-4 mr-2" />
+                        Auto Crawl
+                    </button>
+                    <button
                         onClick={() => setIsCrawlOpen(true)}
                         className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
                     >
@@ -172,6 +247,118 @@ export function ContentList({ initialContents }: { initialContents: Content[] })
                     </button>
                 </div>
             </div>
+
+            {/* Auto Crawl Settings Modal */}
+            {isAutoCrawlOpen && (
+                <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+                    <Card className="w-full max-w-2xl bg-white max-h-[80vh] flex flex-col">
+                        <CardHeader>
+                            <CardTitle>Auto Crawl Settings</CardTitle>
+                        </CardHeader>
+                        <CardContent className="flex flex-col flex-1 overflow-hidden space-y-4">
+
+                            {/* List of Channels */}
+                            <div className="flex-1 overflow-y-auto border rounded-md p-2">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="text-gray-500 bg-gray-50">
+                                        <tr>
+                                            <th className="p-2">Name</th>
+                                            <th className="p-2">Channel URL</th>
+                                            <th className="p-2">Interval</th>
+                                            <th className="p-2">Status</th>
+                                            <th className="p-2">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {crawlSettingsList.map(setting => (
+                                            <tr key={setting.id} className="border-b last:border-0 hover:bg-gray-50">
+                                                <td className="p-2 font-medium">{setting.name}</td>
+                                                <td className="p-2 truncate max-w-[150px]" title={setting.channelUrl}>{setting.channelUrl}</td>
+                                                <td className="p-2">{setting.checkInterval}m</td>
+                                                <td className="p-2">
+                                                    <button
+                                                        onClick={() => handleToggleChannel(setting.id, setting.isActive)}
+                                                        className={cn(
+                                                            "px-2 py-1 rounded text-xs font-bold w-12",
+                                                            setting.isActive ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-500"
+                                                        )}
+                                                    >
+                                                        {setting.isActive ? 'ON' : 'OFF'}
+                                                    </button>
+                                                </td>
+                                                <td className="p-2">
+                                                    <button
+                                                        onClick={() => handleDeleteChannel(setting.id)}
+                                                        className="text-red-500 hover:text-red-700"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {crawlSettingsList.length === 0 && (
+                                            <tr>
+                                                <td colSpan={5} className="p-4 text-center text-gray-400">No channels configured.</td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Add New Channel Form */}
+                            <div className="border-t pt-4">
+                                <h4 className="font-medium mb-2">Add New Channel</h4>
+                                <form onSubmit={handleAddChannel} className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
+                                    <div>
+                                        <label className="text-xs text-gray-500">Name</label>
+                                        <input
+                                            required
+                                            className="w-full px-2 py-1 border rounded"
+                                            value={newChannelName}
+                                            onChange={e => setNewChannelName(e.target.value)}
+                                            placeholder="e.g. Official Sizzle"
+                                        />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="text-xs text-gray-500">Channel URL</label>
+                                        <input
+                                            required
+                                            className="w-full px-2 py-1 border rounded"
+                                            value={newChannelUrl}
+                                            onChange={e => setNewChannelUrl(e.target.value)}
+                                            placeholder="https://youtube.com/@..."
+                                        />
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <div className="w-20">
+                                            <label className="text-xs text-gray-500">Interval(m)</label>
+                                            <input
+                                                type="number"
+                                                required
+                                                min={10}
+                                                className="w-full px-2 py-1 border rounded"
+                                                value={newChannelInterval}
+                                                onChange={e => setNewChannelInterval(parseInt(e.target.value) || 60)}
+                                            />
+                                        </div>
+                                        <button
+                                            type="submit"
+                                            disabled={isSettingsLoading}
+                                            className="flex-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm h-full"
+                                        >
+                                            Add
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div className="flex justify-end pt-2">
+                                <button onClick={() => setIsAutoCrawlOpen(false)} className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded-md">Close</button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
 
             {/* YouTube Crawl Modal */}
             {isCrawlOpen && (
@@ -397,8 +584,15 @@ export function ContentList({ initialContents }: { initialContents: Content[] })
                                 {content.title}
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="py-0 pb-3 text-xs text-gray-500 flex justify-between">
-                            <span>{content.duration} sec</span>
+                        <CardContent className="py-0 pb-3 text-xs text-gray-500 flex justify-between items-center">
+                            <div className="flex gap-2">
+                                <span>{content.duration} sec</span>
+                                {content.source && (
+                                    <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-sm font-medium truncate max-w-[80px]" title={content.source}>
+                                        {content.source}
+                                    </span>
+                                )}
+                            </div>
                             <span>{new Date(content.createdAt).toLocaleDateString()}</span>
                         </CardContent>
                     </Card>
