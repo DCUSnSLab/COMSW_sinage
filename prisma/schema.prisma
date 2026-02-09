@@ -98,8 +98,24 @@ model CrawlSettings {
   isActive      Boolean   @default(false)
   checkInterval Int       @default(60) // in minutes
   lastCheckedAt DateTime?
+  createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   
+  type          String    @default("YOUTUBE") // 'YOUTUBE' | 'DEPARTMENT_NEWS'
+
   playlistId    String?
   playlist      Playlist? @relation(fields: [playlistId], references: [id])
+}
+
+model DepartmentNews {
+  id          String   @id @default(cuid())
+  title       String
+  date        String   // yyyy-mm-dd string from source
+  link        String   @unique
+  thumbnail   String?
+  category    String?  // Optional category if available
+  crawledAt   DateTime @default(now())
+  
+  // Status to track if it's been imported as content?
+  isImported  Boolean  @default(false)
 }

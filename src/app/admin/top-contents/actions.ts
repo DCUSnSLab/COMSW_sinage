@@ -81,5 +81,6 @@ export async function importScheduleFromCalendar(events: { date: Date, endDate?:
         }))
     });
 
+
     revalidatePath('/admin/top-contents');
 }

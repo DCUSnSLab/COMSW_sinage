@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, Monitor, Layers, FileText, MessageSquare, Calendar } from 'lucide-react';
+import { LayoutDashboard, Monitor, Layers, FileText, MessageSquare, Calendar, Globe } from 'lucide-react';
 
 const navItems = [
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
@@ -12,6 +12,7 @@ const navItems = [
     { name: 'Contents', href: '/admin/contents', icon: FileText },
     { name: 'Notices', href: '/admin/notices', icon: MessageSquare },
     { name: 'Top Contents', href: '/admin/top-contents', icon: Calendar },
+    { name: 'Department News', href: '/admin/department-news', icon: Globe },
 ];
 
 export function Sidebar() {

@@ -3,6 +3,7 @@ export async function register() {
     if (process.env.NEXT_RUNTIME === 'nodejs') {
         const { prisma } = await import('@/lib/db');
         const { crawlYouTubeChannel, downloadAndSaveVideo } = await import('@/lib/crawl-service');
+        const { crawlAndSaveDepartmentNews } = await import('@/lib/news-service');
 
         console.log('Initializing Auto-Crawl Scheduler...');
 
@@ -10,15 +11,20 @@ export async function register() {
         setInterval(async () => {
             // console.log('Checking for scheduled crawls...'); // Noise reduction
             try {
-                // Fetch all active settings
-                const allSettings = await prisma.crawlSettings.findMany({
-                    where: { isActive: true }
+                const now = new Date();
+
+                // --- 1. YouTube Crawler ---
+                // Fetch YOUTUBE settings
+                const youtubeSettings = await prisma.crawlSettings.findMany({
+                    where: {
+                        isActive: true,
+                        type: 'YOUTUBE'
+                    }
                 });
 
-                for (const settings of allSettings) {
+                for (const settings of youtubeSettings) {
                     if (!settings.channelUrl) continue;
 
-                    const now = new Date();
                     const lastChecked = settings.lastCheckedAt ? new Date(settings.lastCheckedAt) : new Date(0);
                     const nextCheck = new Date(lastChecked.getTime() + settings.checkInterval * 60000);
 
@@ -48,17 +54,45 @@ export async function register() {
 
                                 if (!exists) {
                                     console.log(`[${settings.name}] New video found: ${video.title}. Downloading...`);
-                                    await downloadAndSaveVideo(video.url, video.title, video.title, settings.name || settings.channelUrl, settings.playlistId || undefined);
+                                    await downloadAndSaveVideo(
+                                        video.url,
+                                        video.title,
+                                        video.description,
+                                        settings.name,
+                                        settings.playlistId || undefined
+                                    );
                                 }
                             }
-                        } catch (err) {
-                            console.error(`[${settings.name}] Auto-Crawl Logic Error:`, err);
+                        } catch (e) {
+                            console.error(`[${settings.name}] Crawl failed:`, e);
                         }
                     }
                 }
-            } catch (e) {
-                console.error('Scheduler Error:', e);
+
+                // --- 2. Department News Crawler ---
+                const newsSettings = await prisma.crawlSettings.findFirst({
+                    where: { type: 'DEPARTMENT_NEWS' }
+                });
+
+                if (newsSettings && newsSettings.isActive) {
+                    const lastChecked = newsSettings.lastCheckedAt ? new Date(newsSettings.lastCheckedAt) : new Date(0);
+                    const nextNewsCheck = new Date(lastChecked.getTime() + newsSettings.checkInterval * 60000);
+
+                    if (now >= nextNewsCheck) {
+                        console.log('Auto-Crawling Department News...');
+
+                        await prisma.crawlSettings.update({
+                            where: { id: newsSettings.id },
+                            data: { lastCheckedAt: now }
+                        });
+
+                        await crawlAndSaveDepartmentNews();
+                    }
+                }
+
+            } catch (error) {
+                console.error('Scheduler Error:', error);
             }
-        }, 60 * 1000); // Check every 60 seconds
+        }, 60000); // Check every minuteconds
     }
 }

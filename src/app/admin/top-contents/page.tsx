@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { createSchedule, deleteSchedule, getMonthSchedules, getSchoolCalendarEvents, importScheduleFromCalendar } from './actions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar as CalendarIcon, Plus, Trash2, ChevronLeft, ChevronRight, Download, Check } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, Trash2, ChevronLeft, ChevronRight, Download, Check, X, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, format, getDay, addDays } from 'date-fns';
