@@ -57,7 +57,9 @@ export default function ContentRenderer({ content }: { content: SignageContent |
         if (content?.type === 'VIDEO' && videoRef.current) {
             videoRef.current.muted = true; // Ensure muted for autoplay
             videoRef.current.play().catch(e => {
-                console.error("Autoplay failed:", e);
+                if (e.name !== 'AbortError') {
+                    console.error("Autoplay failed:", e);
+                }
             });
         }
     }, [content]);

@@ -12,9 +12,15 @@ export default function WeeklyScheduleWidget() {
     useEffect(() => {
         const fetch = async () => {
             const now = new Date();
-            // Fetch for current month (simple approximation for "this week")
-            // Ideally should fetch range, but getMonthSchedules exists
             const data = await getMonthSchedules(now.getFullYear(), now.getMonth());
+
+            // Check if week overlaps next month
+            const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            const daysInMonth = endOfMonth.getDate();
+            if (now.getDate() + 7 > daysInMonth) {
+                const nextMonthData = await getMonthSchedules(now.getFullYear(), now.getMonth() + 1);
+                data.push(...nextMonthData);
+            }
 
             // Filter for "This Week" (Sun - Sat)
             const today = new Date();
@@ -28,14 +34,19 @@ export default function WeeklyScheduleWidget() {
             endOfWeek.setHours(23, 59, 59, 999);
 
             const thisWeek = data.filter((s: any) => {
-                const d = new Date(s.date);
-                return d >= startOfWeek && d <= endOfWeek;
+                const sDate = new Date(s.date);
+                const eDate = s.endDate ? new Date(s.endDate) : sDate;
+                // Check exact overlap
+                return sDate <= endOfWeek && eDate >= startOfWeek;
             });
 
-            setSchedules(thisWeek);
+            // Deduplicate if next month fetch added same events (unlikely with current backend logic but safe)
+            const unique = Array.from(new Map(thisWeek.map((item: any) => [item.id, item])).values());
+
+            setSchedules(unique);
         };
         fetch();
-        const interval = setInterval(fetch, 60000); // 1 minute update interval
+        const interval = setInterval(fetch, 60000);
         return () => clearInterval(interval);
     }, []);
 
@@ -57,6 +68,12 @@ export default function WeeklyScheduleWidget() {
     }
 
     const currentReq = schedules[currentIndex];
+    const startDate = new Date(currentReq.date);
+    const endDate = currentReq.endDate ? new Date(currentReq.endDate) : startDate;
+    const isRange = currentReq.endDate && startDate.getTime() !== endDate.getTime();
+
+    // Formatting helper
+    const formatMonthDay = (d: Date) => `${d.getMonth() + 1}.${d.getDate()}`;
 
     return (
         <div className="w-full h-full flex items-center justify-center p-4 bg-gradient-to-r from-blue-900/20 to-transparent relative">
@@ -73,18 +90,32 @@ export default function WeeklyScheduleWidget() {
                     transition={{ duration: 0.5 }}
                     className="flex items-center gap-6"
                 >
-                    <div className="flex flex-col items-center bg-white/10 px-4 py-2 rounded-lg border border-white/20">
-                        <span className="text-xs text-blue-300 font-bold uppercase tracking-wider">
-                            {new Date(currentReq.date).toLocaleDateString('en-US', { weekday: 'short' })}
-                        </span>
-                        <span className="text-2xl font-bold text-white leading-none mt-1">
-                            {new Date(currentReq.date).getDate()}
-                        </span>
+                    <div className="flex flex-col items-center justify-center bg-white/10 px-4 py-2 rounded-lg border border-white/20 min-w-[90px] h-[60px]">
+                        {isRange ? (
+                            <div className="flex flex-col items-center leading-tight">
+                                <span className="text-sm font-bold text-white">
+                                    {formatMonthDay(startDate)}
+                                </span>
+                                <span className="text-[10px] text-blue-300 font-medium">~</span>
+                                <span className="text-sm font-bold text-white">
+                                    {formatMonthDay(endDate)}
+                                </span>
+                            </div>
+                        ) : (
+                            <>
+                                <span className="text-xs text-blue-300 font-bold uppercase tracking-wider">
+                                    {startDate.toLocaleDateString('en-US', { weekday: 'short' })}
+                                </span>
+                                <span className="text-3xl font-bold text-white leading-none mt-1">
+                                    {startDate.getDate()}
+                                </span>
+                            </>
+                        )}
                     </div>
 
                     <div className="h-10 w-px bg-white/20" />
 
-                    <div className="text-3xl md:text-4xl font-bold text-white tracking-tight drop-shadow-lg">
+                    <div className="text-3xl md:text-4xl font-bold text-white tracking-tight drop-shadow-lg max-w-[500px] truncate">
                         {currentReq.content}
                     </div>
                 </motion.div>

@@ -52,6 +52,7 @@ model Notice {
 model Schedule {
   id        String   @id @default(cuid())
   date      DateTime
+  endDate   DateTime?
   content   String
   createdAt DateTime @default(now())
 }

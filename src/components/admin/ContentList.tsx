@@ -779,9 +779,9 @@ export function ContentList({ initialContents }: { initialContents: Content[] })
                                         <td className="px-4 py-2">
                                             <div className="font-medium truncate max-w-[200px] xl:max-w-[400px]" title={content.title}>{content.title}</div>
                                             <div className="flex gap-1 mt-1">
-                                                {content.source && (
-                                                    <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-sm truncate max-w-[100px]" title={content.source}>
-                                                        {content.source}
+                                                {(content as any).source && (
+                                                    <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-sm truncate max-w-[100px]" title={(content as any).source}>
+                                                        {(content as any).source}
                                                     </span>
                                                 )}
                                                 {(content as any).playlists?.map((p: any) => (
@@ -897,9 +897,9 @@ export function ContentList({ initialContents }: { initialContents: Content[] })
                                     </div>
 
                                     <div className="flex flex-wrap gap-1">
-                                        {content.source && (
-                                            <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-sm font-medium truncate max-w-[100px]" title={content.source}>
-                                                {content.source}
+                                        {(content as any).source && (
+                                            <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-sm font-medium truncate max-w-[100px]" title={(content as any).source}>
+                                                {(content as any).source}
                                             </span>
                                         )}
                                         {(content as any).playlists?.map((p: any) => (
