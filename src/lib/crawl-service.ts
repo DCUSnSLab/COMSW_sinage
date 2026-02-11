@@ -144,8 +144,12 @@ export async function downloadAndSaveVideo(videoUrl: string, title: string, body
             console.log(`[Auto-Crawl] Assigned video to playlist ${playlistId}`);
         }
 
-        revalidatePath('/admin/contents');
-        console.log('Auto-Download Success:', content.id);
+        try {
+            revalidatePath('/admin/contents');
+        } catch (err) {
+            console.log('Skipping revalidatePath (Background Context)');
+        }
+        console.log('Auto-Download Success:');
         return true;
 
     } catch (e) {

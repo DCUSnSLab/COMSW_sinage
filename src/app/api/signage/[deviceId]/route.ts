@@ -75,7 +75,11 @@ export async function GET(
 
                 for (const content of validContents) {
                     mixed.push(content);
-                    itemsSinceLastCrawl++;
+
+                    // Only increment counter for MAIN zone items to ensure correct interval in Main loop
+                    if (!content.zone || content.zone === 'MAIN') {
+                        itemsSinceLastCrawl++;
+                    }
 
                     if (itemsSinceLastCrawl >= interval) {
                         mixed.push(crawlerContentsRaw[crawlerIndex % crawlerContentsRaw.length]);
