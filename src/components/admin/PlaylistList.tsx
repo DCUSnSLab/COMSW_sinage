@@ -11,6 +11,7 @@ type PlaylistWithCounts = {
     id: string;
     name: string;
     description: string | null;
+    type: string; // 'GENERAL' | 'CRAWLER'
     createdAt: Date;
     updatedAt: Date;
     _count: {
@@ -73,17 +74,31 @@ export function PlaylistList({ initialPlaylists }: { initialPlaylists: PlaylistW
                     </CardHeader>
                     <CardContent>
                         <form action={async (formData) => {
+                            // Convert checkbox state to scalar if needed, but native checkbox works
+                            // if checked, value is "on", so we might need client side logic or just handle it here
+                            // Actually, let's use a hidden input or just rely on 'on' mapping in actions if we did that.
+                            // But better:
+                            const type = formData.get('isCrawler') === 'on' ? 'CRAWLER' : 'GENERAL';
+                            formData.set('type', type);
                             await createPlaylist(formData);
                             setIsFormOpen(false);
-                        }} className="flex gap-4 items-end">
-                            <div className="flex-1 space-y-2">
+                        }} className="flex gap-4 items-end flex-wrap">
+                            <div className="flex-1 min-w-[200px] space-y-2">
                                 <label className="text-sm font-medium">Name</label>
                                 <input name="name" required className="w-full px-3 py-2 border rounded-md" placeholder="e.g. Morning Loop" />
                             </div>
-                            <div className="flex-[2] space-y-2">
+                            <div className="flex-[2] min-w-[300px] space-y-2">
                                 <label className="text-sm font-medium">Description</label>
                                 <input name="description" className="w-full px-3 py-2 border rounded-md" placeholder="Optional description" />
                             </div>
+
+                            <div className="flex items-center space-x-2 pb-3">
+                                <input type="checkbox" id="isCrawler" name="isCrawler" className="w-4 h-4 text-blue-600 rounded" />
+                                <label htmlFor="isCrawler" className="text-sm font-medium text-gray-700">
+                                    Crawled YouTube Video Exclusive
+                                </label>
+                            </div>
+
                             <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md">
                                 Create
                             </button>
@@ -138,9 +153,14 @@ export function PlaylistList({ initialPlaylists }: { initialPlaylists: PlaylistW
                 {initialPlaylists.map((playlist) => (
                     <Card key={playlist.id} className={editingPlaylist?.id === playlist.id ? "ring-2 ring-orange-400 opacity-50" : ""}>
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-lg font-medium flex items-center">
-                                <Layers className="w-5 h-5 mr-2 text-indigo-500" />
+                            <CardTitle className="text-lg font-medium flex items-center gap-2">
+                                <Layers className={`w-5 h-5 ${playlist.type === 'CRAWLER' ? 'text-red-500' : 'text-indigo-500'}`} />
                                 {playlist.name}
+                                {playlist.type === 'CRAWLER' && (
+                                    <span className="px-2 py-0.5 text-xs font-semibold bg-red-100 text-red-700 rounded-full">
+                                        Crawler
+                                    </span>
+                                )}
                             </CardTitle>
                             <div className="flex gap-1">
                                 <button

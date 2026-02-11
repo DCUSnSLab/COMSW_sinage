@@ -8,6 +8,8 @@ export async function createDevice(formData: FormData) {
     const location = formData.get('location') as string;
     const layoutMode = formData.get('layoutMode') as string;
     const splitRatio = parseInt(formData.get('splitRatio') as string) || 50;
+    const crawlPlaylistId = formData.get('crawlPlaylistId') as string;
+    const crawlerInterval = parseInt(formData.get('crawlerInterval') as string) || 5;
 
     await prisma.device.create({
         data: {
@@ -15,6 +17,8 @@ export async function createDevice(formData: FormData) {
             location,
             layoutMode: layoutMode || 'FULL',
             splitRatio,
+            crawlPlaylistId: crawlPlaylistId || null,
+            crawlerInterval,
         },
     });
 
@@ -26,6 +30,8 @@ export async function updateDevice(id: string, formData: FormData) {
     const location = formData.get('location') as string;
     const layoutMode = formData.get('layoutMode') as string;
     const splitRatio = parseInt(formData.get('splitRatio') as string) || 50;
+    const crawlPlaylistId = formData.get('crawlPlaylistId') as string;
+    const crawlerInterval = parseInt(formData.get('crawlerInterval') as string) || 5;
 
     await prisma.device.update({
         where: { id },
@@ -34,6 +40,8 @@ export async function updateDevice(id: string, formData: FormData) {
             location,
             layoutMode,
             splitRatio,
+            crawlPlaylistId: crawlPlaylistId || null,
+            crawlerInterval,
         },
     });
     revalidatePath('/admin/devices');
@@ -50,6 +58,14 @@ export async function toggleDeviceStatus(id: string, isActive: boolean) {
     await prisma.device.update({
         where: { id },
         data: { isActive },
+    });
+    revalidatePath('/admin/devices');
+}
+
+export async function assignCrawlerPlaylist(deviceId: string, playlistId: string) {
+    await prisma.device.update({
+        where: { id: deviceId },
+        data: { crawlPlaylistId: playlistId || null },
     });
     revalidatePath('/admin/devices');
 }

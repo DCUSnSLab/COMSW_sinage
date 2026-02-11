@@ -22,6 +22,11 @@ model Device {
   updatedAt   DateTime @updatedAt
 
   playlists   DevicePlaylist[]
+
+  // New Relation for Interleaved Crawler Playlist
+  crawlPlaylistId String?
+  crawlPlaylist   Playlist? @relation("DeviceCrawl", fields: [crawlPlaylistId], references: [id])
+  crawlerInterval Int      @default(5) // Play 1 item from crawl playlist after N main items
 }
 
 model Content {
@@ -61,10 +66,12 @@ model Playlist {
   id          String   @id @default(cuid())
   name        String
   description String?
+  type        String   @default("GENERAL") // "GENERAL" or "CRAWLER"
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   devices     DevicePlaylist[]
+  crawledByDevices Device[] @relation("DeviceCrawl") // Back-relation
   contents    PlaylistContent[]
   crawlSettings CrawlSettings[]
 }

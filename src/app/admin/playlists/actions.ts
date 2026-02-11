@@ -6,11 +6,13 @@ import { revalidatePath } from 'next/cache';
 export async function createPlaylist(formData: FormData) {
     const name = formData.get('name') as string;
     const description = formData.get('description') as string;
+    const type = formData.get('type') as string; // 'GENERAL' or 'CRAWLER'
 
     await prisma.playlist.create({
         data: {
             name,
             description,
+            type: type || 'GENERAL',
         },
     });
 

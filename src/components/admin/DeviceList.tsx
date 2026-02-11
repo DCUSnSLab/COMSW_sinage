@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { Device, Playlist } from '@prisma/client';
-import { createDevice, deleteDevice, toggleDeviceStatus, updateDevice } from '@/app/admin/devices/actions';
+import { createDevice, deleteDevice, toggleDeviceStatus, updateDevice, assignCrawlerPlaylist } from '@/app/admin/devices/actions';
 import { assignDeviceToPlaylist } from '@/app/admin/playlists/actions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Monitor, Plus, Trash2, Power, LayoutTemplate, Link as LinkIcon, Edit } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 
-export function DeviceList({ initialDevices, playlists }: { initialDevices: any[], playlists: Playlist[] }) {
+export function DeviceList({ initialDevices, playlists }: { initialDevices: any[], playlists: any[] }) {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingDevice, setEditingDevice] = useState<any | null>(null);
     const router = useRouter();
@@ -117,6 +117,21 @@ export function DeviceList({ initialDevices, playlists }: { initialDevices: any[
                                     <p className="text-xs text-gray-400">Main Zone vs Sub Zone percentage.</p>
                                 </div>
 
+                                {/* Crawler Playlist Selection (Optional) */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-gray-700">Interleaved Playlist (Crawler)</label>
+                                    <select
+                                        name="crawlPlaylistId"
+                                        defaultValue={editingDevice?.crawlPlaylistId || ''}
+                                        className="w-full px-3 py-2 border rounded-md"
+                                    >
+                                        <option value="">None</option>
+                                        {playlists.filter(p => p.type === 'CRAWLER').map(p => (
+                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
                                 <div className="md:col-span-2 flex justify-end gap-2 pt-4">
                                     <button
                                         type="button"
@@ -190,7 +205,7 @@ export function DeviceList({ initialDevices, playlists }: { initialDevices: any[
 
                                 <div className="pt-4 mt-4 border-t border-gray-100">
                                     <label className="text-xs font-semibold text-gray-400 flex items-center mb-1">
-                                        <LinkIcon className="w-3 h-3 mr-1" /> Active Playlist
+                                        <LinkIcon className="w-3 h-3 mr-1" /> Active Playlist (General)
                                     </label>
                                     <select
                                         className="w-full text-xs p-1 border rounded bg-white"
@@ -198,7 +213,26 @@ export function DeviceList({ initialDevices, playlists }: { initialDevices: any[
                                         onChange={(e) => handlePlaylistChange(device.id, e.target.value)}
                                     >
                                         <option value="">No Playlist Assigned</option>
-                                        {playlists.map(p => (
+                                        {playlists.filter(p => !p.type || p.type === 'GENERAL').map(p => (
+                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="pt-2 mt-2 border-t border-gray-100">
+                                    <label className="text-xs font-semibold text-gray-400 flex items-center mb-1">
+                                        <LinkIcon className="w-3 h-3 mr-1" /> Interleaved Playlist (Crawler)
+                                    </label>
+                                    <select
+                                        className="w-full text-xs p-1 border rounded bg-white text-gray-600"
+                                        value={device.crawlPlaylistId || ''}
+                                        onChange={async (e) => {
+                                            await assignCrawlerPlaylist(device.id, e.target.value);
+                                            router.refresh();
+                                        }}
+                                    >
+                                        <option value="">Select None</option>
+                                        {playlists.filter(p => p.type === 'CRAWLER').map(p => (
                                             <option key={p.id} value={p.id}>{p.name}</option>
                                         ))}
                                     </select>

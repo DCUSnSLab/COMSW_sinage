@@ -55,6 +55,38 @@ export async function GET(
             return true;
         });
 
+        // --- Interleaving Logic ---
+        let finalContents = [...validContents];
+
+        // Cast device to any to access new fields before regeneration
+        const d = device as any;
+
+        if (d.crawlPlaylistId && d.crawlPlaylist) {
+            // Get crawler contents
+            const crawlerContentsRaw = d.crawlPlaylist.contents
+                .map((pc: any) => pc.content) // Cast pc to any
+                .filter((c: any) => c.isActive);
+
+            if (crawlerContentsRaw.length > 0) {
+                const interval = d.crawlerInterval || 5;
+                const mixed: any[] = [];
+                let crawlerIndex = 0;
+                let itemsSinceLastCrawl = 0;
+
+                for (const content of validContents) {
+                    mixed.push(content);
+                    itemsSinceLastCrawl++;
+
+                    if (itemsSinceLastCrawl >= interval) {
+                        mixed.push(crawlerContentsRaw[crawlerIndex % crawlerContentsRaw.length]);
+                        crawlerIndex++;
+                        itemsSinceLastCrawl = 0;
+                    }
+                }
+                finalContents = mixed;
+            }
+        }
+
         // Fetch active notices
         const notices = await prisma.notice.findMany({
             where: { isActive: true },
@@ -67,7 +99,7 @@ export async function GET(
                 layoutMode: device.layoutMode,
                 splitRatio: device.splitRatio || 50,
             },
-            contents: validContents,
+            contents: finalContents,
             notices: notices.map(n => n.message)
         });
 
