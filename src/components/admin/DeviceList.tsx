@@ -17,6 +17,7 @@ export function DeviceList({ initialDevices, playlists }: { initialDevices: any[
     // Ratio State for Form
     const [mainRatio, setMainRatio] = useState(50);
     const [subRatio, setSubRatio] = useState(50);
+    const [selectedCrawlPlaylistId, setSelectedCrawlPlaylistId] = useState<string>('');
 
     // Sync sub ratio when main changes
     const handleMainRatioChange = (val: number) => {
@@ -41,13 +42,20 @@ export function DeviceList({ initialDevices, playlists }: { initialDevices: any[
         setEditingDevice(device);
         setMainRatio(device.splitRatio || 50);
         setSubRatio(100 - (device.splitRatio || 50));
+        setSelectedCrawlPlaylistId(device.crawlPlaylistId || '');
     };
 
     return (
         <div className="space-y-6">
             <div className="flex justify-end">
                 <button
-                    onClick={() => { setIsFormOpen(!isFormOpen); setEditingDevice(null); setMainRatio(50); setSubRatio(50); }}
+                    onClick={() => {
+                        setIsFormOpen(!isFormOpen);
+                        setEditingDevice(null);
+                        setMainRatio(50);
+                        setSubRatio(50);
+                        setSelectedCrawlPlaylistId('');
+                    }}
                     className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
                 >
                     <Plus className="w-4 h-4 mr-2" />
@@ -122,15 +130,35 @@ export function DeviceList({ initialDevices, playlists }: { initialDevices: any[
                                     <label className="text-sm font-medium text-gray-700">Interleaved Playlist (Crawler)</label>
                                     <select
                                         name="crawlPlaylistId"
-                                        defaultValue={editingDevice?.crawlPlaylistId || ''}
+                                        value={selectedCrawlPlaylistId}
+                                        onChange={(e) => setSelectedCrawlPlaylistId(e.target.value)}
                                         className="w-full px-3 py-2 border rounded-md"
                                     >
-                                        <option value="">None</option>
+                                        <option value="">Select None</option>
                                         {playlists.filter(p => p.type === 'CRAWLER').map(p => (
                                             <option key={p.id} value={p.id}>{p.name}</option>
                                         ))}
                                     </select>
                                 </div>
+
+                                {/* Crawler Interval (Conditional) */}
+                                {selectedCrawlPlaylistId && (
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-gray-700">Interleave Interval</label>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm text-gray-500">Every</span>
+                                            <input
+                                                name="crawlerInterval"
+                                                type="number"
+                                                min="1"
+                                                defaultValue={editingDevice?.crawlerInterval || 5}
+                                                className="w-20 px-3 py-2 border rounded-md text-center"
+                                            />
+                                            <span className="text-sm text-gray-500">items</span>
+                                        </div>
+                                        <p className="text-xs text-gray-400">Play 1 crawler video after N main items.</p>
+                                    </div>
+                                )}
 
                                 <div className="md:col-span-2 flex justify-end gap-2 pt-4">
                                     <button
