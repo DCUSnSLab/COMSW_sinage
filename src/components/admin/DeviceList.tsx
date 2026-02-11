@@ -94,24 +94,24 @@ export function DeviceList({ initialDevices, playlists }: { initialDevices: any[
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium">Split Ratio (%)</label>
                                     <div className="flex items-center gap-2">
-                                        <div className="flex-1 relative">
+                                        <div className="flex-1">
                                             <input
                                                 type="number"
                                                 value={mainRatio}
                                                 onChange={(e) => handleMainRatioChange(parseInt(e.target.value) || 0)}
                                                 className="w-full px-3 py-2 border rounded-md text-center"
                                             />
-                                            <span className="text-[10px] text-gray-400 absolute bottom-1 right-2">Main</span>
+                                            <span className="text-[10px] text-gray-400 block text-center mt-1">Main (%)</span>
                                         </div>
-                                        <span className="text-gray-400">:</span>
-                                        <div className="flex-1 relative">
+                                        <span className="text-gray-400 pb-5">:</span>
+                                        <div className="flex-1">
                                             <input
                                                 type="number"
                                                 value={subRatio}
                                                 onChange={(e) => handleSubRatioChange(parseInt(e.target.value) || 0)}
                                                 className="w-full px-3 py-2 border rounded-md text-center"
                                             />
-                                            <span className="text-[10px] text-gray-400 absolute bottom-1 right-2">Sub</span>
+                                            <span className="text-[10px] text-gray-400 block text-center mt-1">Sub (%)</span>
                                         </div>
                                     </div>
                                     <p className="text-xs text-gray-400">Main Zone vs Sub Zone percentage.</p>
@@ -133,7 +133,8 @@ export function DeviceList({ initialDevices, playlists }: { initialDevices: any[
                         </CardContent>
                     </Card>
                 </div>
-            )}
+            )
+            }
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {initialDevices.map((device) => (
@@ -213,6 +214,6 @@ export function DeviceList({ initialDevices, playlists }: { initialDevices: any[
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     );
 }

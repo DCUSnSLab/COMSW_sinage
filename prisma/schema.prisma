@@ -35,6 +35,7 @@ model Content {
   startDate   DateTime?
   endDate     DateTime?
   isActive    Boolean  @default(true)
+  source      String?  // e.g. "YouTube: Channel Name" or "Manual"
   createdAt   DateTime @default(now())
   
   playlists   PlaylistContent[]
@@ -51,6 +52,7 @@ model Notice {
 model Schedule {
   id        String   @id @default(cuid())
   date      DateTime
+  endDate   DateTime?
   content   String
   createdAt DateTime @default(now())
 }
@@ -64,6 +66,7 @@ model Playlist {
 
   devices     DevicePlaylist[]
   contents    PlaylistContent[]
+  crawlSettings CrawlSettings[]
 }
 
 // Many-to-Many Mappings with order
@@ -86,4 +89,36 @@ model DevicePlaylist {
   
   device      Device   @relation(fields: [deviceId], references: [id])
   playlist    Playlist @relation(fields: [playlistId], references: [id])
+}
+
+model CrawlSettings {
+  id            Int       @id @default(autoincrement())
+  name          String    @default("New Channel")
+  channelUrl    String    @default("")
+  isActive      Boolean   @default(false)
+  checkInterval Int       @default(60) // in minutes
+  lastCheckedAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  type          String    @default("YOUTUBE") // 'YOUTUBE' | 'DEPARTMENT_NEWS'
+
+  playlistId    String?
+  playlist      Playlist? @relation(fields: [playlistId], references: [id])
+}
+
+model DepartmentNews {
+  id          String   @id @default(cuid())
+  title       String
+  date        String   // yyyy-mm-dd string from source
+  link        String   @unique
+  thumbnail   String?
+  category    String?  // Optional category if available
+  crawledAt   DateTime @default(now())
+  
+  content     String?  @db.Text
+  images      String[]
+
+  // Status to track if it's been imported as content?
+  isImported  Boolean  @default(false)
 }

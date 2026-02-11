@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { SignageContent } from '@/hooks/useSignageLoop';
 import { cn } from '@/lib/utils';
 
@@ -50,16 +51,31 @@ export default function ContentRenderer({ content }: { content: SignageContent |
         );
     }
 
+    const videoRef = useRef<HTMLVideoElement>(null);
+
+    useEffect(() => {
+        if (content?.type === 'VIDEO' && videoRef.current) {
+            videoRef.current.muted = true; // Ensure muted for autoplay
+            videoRef.current.play().catch(e => {
+                if (e.name !== 'AbortError') {
+                    console.error("Autoplay failed:", e);
+                }
+            });
+        }
+    }, [content]);
+
     if (content.type === 'VIDEO' && content.url) {
         return (
             <div className={wrapperClass}>
                 <div className="flex-1 relative w-full overflow-hidden bg-black flex items-center justify-center">
                     <video
+                        ref={videoRef}
                         src={content.url}
                         className="w-full h-full object-contain"
                         autoPlay
                         muted
                         loop
+                        playsInline
                     />
                 </div>
                 <InfoTextBox text={content.body} />

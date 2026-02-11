@@ -5,6 +5,13 @@ import { ContentList } from '@/components/admin/ContentList';
 export default async function ContentsPage() {
     const contents = await prisma.content.findMany({
         orderBy: { createdAt: 'desc' },
+        include: {
+            playlists: {
+                include: {
+                    playlist: true
+                }
+            }
+        }
     });
 
     return (

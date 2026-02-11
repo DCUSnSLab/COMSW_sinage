@@ -7,6 +7,8 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '100mb',
     },
+    // Required for src/instrumentation.ts
+
   },
 };
 
