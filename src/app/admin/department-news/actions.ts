@@ -131,9 +131,9 @@ export async function getNewsDetail(id: string) {
                     content: detail.content,
                     images: detail.images,
                     // Also update date if we found a better one and existing is empty or we want to trust detail more
-                    date: (item.date === '' && detail.date) ? detail.date : item.date
-                    // Actually, let's just update it if we found one, looking at the dump '25-12-22' is better than nothing
-                    // But 'item.date' might be already good. Let's strictly update if item.date is missing/invalid.
+                    date: (item.date === '' && detail.date) ? detail.date : item.date,
+                    // Update Title if detail has a better one (full title)
+                    title: detail.title || item.title
                 }
             });
 

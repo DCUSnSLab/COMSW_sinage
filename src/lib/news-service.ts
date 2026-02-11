@@ -23,7 +23,7 @@ export async function crawlAndSaveDepartmentNews() {
 
                 await prisma.departmentNews.create({
                     data: {
-                        title: item.title,
+                        title: detail.title || item.title, // Use full title from detail if available
                         date: finalDate, // Use the fetched date
                         link: item.link,
                         thumbnail: item.thumbnail || null,
