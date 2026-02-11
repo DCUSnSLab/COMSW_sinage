@@ -90,3 +90,91 @@ export async function updateContentZone(id: string, zone: string) {
     });
     revalidatePath('/admin/playlists');
 }
+
+export async function reorderPlaylistContent(id: string, direction: 'UP' | 'DOWN') {
+    const item = await prisma.playlistContent.findUnique({
+        where: { id },
+    });
+
+    if (!item) return;
+
+    const { playlistId, displayOrder } = item;
+
+    // Find the item to swap with
+    let targetItem;
+    if (direction === 'UP') {
+        targetItem = await prisma.playlistContent.findFirst({
+            where: {
+                playlistId,
+                displayOrder: { lt: displayOrder },
+            },
+            orderBy: { displayOrder: 'desc' },
+        });
+    } else {
+        targetItem = await prisma.playlistContent.findFirst({
+            where: {
+                playlistId,
+                displayOrder: { gt: displayOrder },
+            },
+            orderBy: { displayOrder: 'asc' },
+        });
+    }
+
+    if (targetItem) {
+        // Swap orders using a transaction
+        await prisma.$transaction([
+            prisma.playlistContent.update({
+                where: { id: item.id },
+                data: { displayOrder: targetItem.displayOrder },
+            }),
+            prisma.playlistContent.update({
+                where: { id: targetItem.id },
+                data: { displayOrder: displayOrder },
+            }),
+        ]);
+
+        revalidatePath(`/admin/playlists/${playlistId}`);
+    }
+}
+
+export async function movePlaylistContent(id: string, newIndex: number) {
+    const item = await prisma.playlistContent.findUnique({
+        where: { id },
+    });
+
+    if (!item) return;
+
+    const { playlistId, displayOrder: oldIndex } = item;
+
+    if (oldIndex === newIndex) return; // No change
+
+    // 1. Get all items in this playlist, ordered
+    const allItems = await prisma.playlistContent.findMany({
+        where: { playlistId },
+        orderBy: { displayOrder: 'asc' }
+    });
+
+    // 2. Calculate new order locally
+    // Remove item from old position
+    const currentItem = allItems.find(i => i.id === id);
+    if (!currentItem) return;
+
+    const remainingItems = allItems.filter(i => i.id !== id);
+
+    // Insert at new position
+    // (If newIndex is out of bounds, push to end or unshift)
+    remainingItems.splice(newIndex, 0, currentItem);
+
+    // 3. Update all items with new displayOrder
+    // We can use a transaction for safety
+    const updates = remainingItems.map((item, index) => {
+        return prisma.playlistContent.update({
+            where: { id: item.id },
+            data: { displayOrder: index + 1 } // 1-based index
+        });
+    });
+
+    await prisma.$transaction(updates);
+
+    revalidatePath(`/admin/playlists/${playlistId}`);
+}
