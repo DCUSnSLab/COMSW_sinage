@@ -18,6 +18,22 @@ export async function createPlaylist(formData: FormData) {
 }
 
 export async function deletePlaylist(id: string) {
+    // 1. Remove dependencies
+    await prisma.playlistContent.deleteMany({
+        where: { playlistId: id }
+    });
+
+    await prisma.devicePlaylist.deleteMany({
+        where: { playlistId: id }
+    });
+
+    // 2. Unlink CrawlSettings
+    await prisma.crawlSettings.updateMany({
+        where: { playlistId: id },
+        data: { playlistId: null }
+    });
+
+    // 3. Delete Playlist
     await prisma.playlist.delete({
         where: { id },
     });

@@ -137,9 +137,11 @@ export default function TopContentsPage() {
         fetchSchedules();
     };
 
-    const handleDelete = async (id: string) => {
-        await deleteSchedule(id);
-        fetchSchedules();
+    const handleDelete = async (id: string, content: string) => {
+        if (confirm(`'${content}' 일정을 정말 삭제하시겠습니까?`)) {
+            await deleteSchedule(id);
+            fetchSchedules();
+        }
     };
 
     const fetchSchoolEvents = async () => {
@@ -294,9 +296,7 @@ export default function TopContentsPage() {
                                                             <button
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
-                                                                    if (confirm('일정을 삭제하시겠습니까?')) {
-                                                                        handleDelete(segment.id);
-                                                                    }
+                                                                    handleDelete(segment.id, segment.content);
                                                                 }}
                                                                 className="opacity-0 group-hover/item:opacity-100 p-0.5 hover:bg-blue-300 rounded transition-opacity"
                                                             >
@@ -355,7 +355,7 @@ export default function TopContentsPage() {
                                             </span>
                                         )}
                                     </div>
-                                    <button onClick={() => handleDelete(s.id)} className="text-red-500 hover:bg-red-50 p-1 rounded">
+                                    <button onClick={() => handleDelete(s.id, s.content)} className="text-red-500 hover:bg-red-50 p-1 rounded">
                                         <Trash2 className="w-4 h-4" />
                                     </button>
                                 </div>

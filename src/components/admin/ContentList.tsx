@@ -296,8 +296,8 @@ export function ContentList({ initialContents }: { initialContents: Content[] })
         }
     };
 
-    const handleDeleteContent = async (id: string) => {
-        if (confirm('Are you sure you want to delete this content?')) {
+    const handleDeleteContent = async (id: string, title: string) => {
+        if (confirm(`'${title}' 컨텐츠를 정말 삭제하시겠습니까?`)) {
             await deleteContent(id);
         }
     };
@@ -819,7 +819,7 @@ export function ContentList({ initialContents }: { initialContents: Content[] })
                                                     <Edit className="w-4 h-4" />
                                                 </button>
                                                 <button
-                                                    onClick={() => handleDeleteContent(content.id)}
+                                                    onClick={() => handleDeleteContent(content.id, content.title)}
                                                     className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
                                                 >
                                                     <Trash2 className="w-4 h-4" />
@@ -875,7 +875,7 @@ export function ContentList({ initialContents }: { initialContents: Content[] })
                                             <Edit className="w-4 h-4" />
                                         </button>
                                         <button
-                                            onClick={() => handleDeleteContent(content.id)}
+                                            onClick={() => handleDeleteContent(content.id, content.title)}
                                             className="p-2 bg-white rounded-full hover:scale-110 transition text-red-500" title="Delete"
                                         >
                                             <Trash2 className="w-4 h-4" />

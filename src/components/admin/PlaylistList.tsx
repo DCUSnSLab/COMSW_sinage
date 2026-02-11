@@ -151,7 +151,11 @@ export function PlaylistList({ initialPlaylists }: { initialPlaylists: PlaylistW
                                     <Edit className="w-4 h-4" />
                                 </button>
                                 <button
-                                    onClick={() => deletePlaylist(playlist.id)}
+                                    onClick={() => {
+                                        if (confirm(`'${playlist.name}' 플레이리스트를 정말 삭제하시겠습니까?`)) {
+                                            deletePlaylist(playlist.id);
+                                        }
+                                    }}
                                     className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full"
                                     title="Delete"
                                 >

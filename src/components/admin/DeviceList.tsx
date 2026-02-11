@@ -160,8 +160,13 @@ export function DeviceList({ initialDevices, playlists }: { initialDevices: any[
                                     <Edit className="w-4 h-4" />
                                 </button>
                                 <button
-                                    onClick={() => deleteDevice(device.id)}
+                                    onClick={() => {
+                                        if (confirm(`'${device.name}' 기기를 정말 삭제하시겠습니까?`)) {
+                                            deleteDevice(device.id);
+                                        }
+                                    }}
                                     className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full"
+                                    title="Delete"
                                 >
                                     <Trash2 className="w-4 h-4" />
                                 </button>
