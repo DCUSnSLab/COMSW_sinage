@@ -112,3 +112,46 @@ export async function importNewsContent(url: string, type: 'TEXT' | 'IMAGE') {
         return { success: false, error: String(error) };
     }
 }
+export async function getNewsDetail(id: string) {
+    try {
+        const item = await prisma.departmentNews.findUnique({
+            where: { id }
+        });
+
+        if (!item) return null;
+
+        // If content is missing, fetch it now (Lazy Crawling)
+        if (!item.content) {
+            console.log(`Lazy fetching content for: ${item.title}`);
+            const detail = await fetchNewsDetail(item.link);
+
+            const updated = await prisma.departmentNews.update({
+                where: { id },
+                data: {
+                    content: detail.content,
+                    images: detail.images,
+                    // Also update date if we found a better one and existing is empty or we want to trust detail more
+                    date: (item.date === '' && detail.date) ? detail.date : item.date
+                    // Actually, let's just update it if we found one, looking at the dump '25-12-22' is better than nothing
+                    // But 'item.date' might be already good. Let's strictly update if item.date is missing/invalid.
+                }
+            });
+
+            // If we found a date and the original was empty, explicitly update it
+            if (!item.date && detail.date) {
+                await prisma.departmentNews.update({
+                    where: { id },
+                    data: { date: detail.date }
+                });
+            }
+
+            return updated;
+            return updated;
+        }
+
+        return item;
+    } catch (error) {
+        console.error("Failed to get news detail:", error);
+        return null;
+    }
+}

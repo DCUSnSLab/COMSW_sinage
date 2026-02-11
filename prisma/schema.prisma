@@ -116,6 +116,9 @@ model DepartmentNews {
   category    String?  // Optional category if available
   crawledAt   DateTime @default(now())
   
+  content     String?  @db.Text
+  images      String[]
+
   // Status to track if it's been imported as content?
   isImported  Boolean  @default(false)
 }

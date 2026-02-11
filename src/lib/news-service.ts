@@ -1,5 +1,5 @@
 import { prisma } from './db';
-import { fetchDepartmentNews } from './news-scraper';
+import { fetchDepartmentNews, fetchNewsDetail } from './news-scraper';
 
 export async function crawlAndSaveDepartmentNews() {
     console.log('Starting Department News Crawl...');
@@ -14,12 +14,21 @@ export async function crawlAndSaveDepartmentNews() {
             });
 
             if (!existing) {
+                // Fetch full details
+                console.log(`Fetching details for: ${item.title}`);
+                const detail = await fetchNewsDetail(item.link);
+
+                // Use date from detail if available (List page often lacks date)
+                const finalDate = detail.date || item.date || new Date().toISOString().split('T')[0];
+
                 await prisma.departmentNews.create({
                     data: {
                         title: item.title,
-                        date: item.date,
+                        date: finalDate, // Use the fetched date
                         link: item.link,
                         thumbnail: item.thumbnail || null,
+                        content: detail.content,
+                        images: detail.images,
                         crawledAt: new Date(),
                     }
                 });

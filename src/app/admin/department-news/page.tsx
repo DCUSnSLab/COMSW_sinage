@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getStoredNewsList, forceCrawl, importNewsContent, getNewsSettings, updateNewsSettings } from './actions';
+import { getStoredNewsList, forceCrawl, importNewsContent, getNewsSettings, updateNewsSettings, getNewsDetail } from './actions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Globe, RefreshCw, FileText, ImageIcon, ExternalLink, Download, Check, Settings, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -19,6 +19,35 @@ export default function DepartmentNewsPage() {
     const [checkInterval, setCheckInterval] = useState(60);
     const [isSavingSettings, setIsSavingSettings] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
+
+    const [selectedNews, setSelectedNews] = useState<any | null>(null);
+    const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+
+    // Fetch full detail when a news item is selected
+    useEffect(() => {
+        const fetchDetail = async () => {
+            if (selectedNews && !selectedNews.content) {
+                setIsLoadingDetail(true);
+                try {
+                    const detail = await getNewsDetail(selectedNews.id);
+                    if (detail) {
+                        setSelectedNews(detail);
+                        // Update the list as well to reflect the change locally
+                        setNewsList(prev => prev.map(item => item.id === detail.id ? detail : item));
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch detail", e);
+                } finally {
+                    setIsLoadingDetail(false);
+                }
+            }
+        };
+
+        if (selectedNews) {
+            fetchDetail();
+        }
+    }, [selectedNews?.id]); // Depend on ID to trigger only on change
+
 
     useEffect(() => {
         loadData();
@@ -153,19 +182,19 @@ export default function DepartmentNewsPage() {
                             <div className="grid grid-cols-1 gap-2">
                                 {newsList.map((news) => (
                                     <div key={news.id} className="flex items-center justify-between p-3 bg-white border rounded-lg hover:shadow-sm transition">
-                                        <div className="flex-1 min-w-0 mr-4">
-                                            <div className="font-medium truncate" title={news.title}>
+                                        <div className="flex-1 min-w-0 mr-4 cursor-pointer" onClick={() => setSelectedNews(news)}>
+                                            <div className="font-medium truncate hover:text-blue-600" title={news.title}>
                                                 {news.title}
                                             </div>
-                                            <div className="text-xs text-gray-500 flex gap-3 mt-1 items-center">
-                                                <span className="font-semibold text-gray-600">{news.date}</span>
-                                                <span className="text-gray-400">|</span>
-                                                <span title={new Date(news.crawledAt).toLocaleString()}>
-                                                    Crawled {formatDistanceToNow(new Date(news.crawledAt), { addSuffix: true })}
-                                                </span>
-                                                <a href={news.link} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline flex items-center gap-1 ml-2">
-                                                    View Original <ExternalLink className="w-3 h-3" />
-                                                </a>
+                                            <div className="text-sm text-gray-500 mt-1">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-700 font-semibold text-xs border">
+                                                        {news.date}
+                                                    </span>
+                                                    <span className="text-xs text-gray-400">
+                                                        Crawled {formatDistanceToNow(new Date(news.crawledAt), { addSuffix: true })}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
@@ -177,13 +206,12 @@ export default function DepartmentNewsPage() {
                                             )}
                                             <button
                                                 onClick={() => {
-                                                    setImportNewsUrl(news.link);
-                                                    setImportNewsType('TEXT');
+                                                    setSelectedNews(news);
                                                 }}
                                                 className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition"
                                             >
-                                                <Download className="w-3 h-3" />
-                                                Import
+                                                <FileText className="w-3 h-3" />
+                                                View
                                             </button>
                                         </div>
                                     </div>
@@ -257,6 +285,83 @@ export default function DepartmentNewsPage() {
                                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                             >
                                 {isImportingNews ? 'Importing...' : 'Confirm Import'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Content Detail Modal */}
+            {selectedNews && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+                        <div className="p-6 border-b flex justify-between items-start">
+                            <div>
+                                <h2 className="text-xl font-bold leading-tight mr-4">{selectedNews.title}</h2>
+                                <div className="text-sm text-gray-500 mt-1 flex gap-2">
+                                    <span>{selectedNews.date}</span>
+                                    <span>|</span>
+                                    <a href={selectedNews.link} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline flex items-center gap-1">
+                                        View Original <ExternalLink className="w-3 h-3" />
+                                    </a>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setSelectedNews(null)}
+                                className="text-gray-400 hover:text-gray-600 transition"
+                            >
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className="p-6 overflow-y-auto">
+                            {/* Images Gallery */}
+                            {selectedNews.images && selectedNews.images.length > 0 && (
+                                <div className="mb-6 grid grid-cols-2 md:grid-cols-3 gap-4">
+                                    {selectedNews.images.map((img: string, i: number) => (
+                                        <div key={i} className="relative aspect-video bg-gray-100 rounded-lg overflow-hidden border">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img src={img} alt={`Attachment ${i}`} className="w-full h-full object-cover hover:scale-105 transition-transform" />
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* HTML Content */}
+                            <div className="prose max-w-none prose-sm md:prose-base bg-gray-50 p-6 rounded-lg border">
+                                {isLoadingDetail ? (
+                                    <div className="flex flex-col items-center justify-center py-10 text-gray-500">
+                                        <RefreshCw className="w-8 h-8 animate-spin mb-2 text-blue-500" />
+                                        <p>Fetching content...</p>
+                                    </div>
+                                ) : selectedNews.content ? (
+                                    <div dangerouslySetInnerHTML={{ __html: selectedNews.content }} />
+                                ) : (
+                                    <p className="text-gray-400 italic text-center">No content text available.</p>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="p-4 border-t bg-gray-50 flex justify-end gap-2">
+                            <button
+                                onClick={() => {
+                                    setImportNewsUrl(selectedNews.link);
+                                    setImportNewsType('TEXT');
+                                    // Keep detail modal open or close it? Let's keep it open or maybe close it to show import modal clearly.
+                                    // Actually, Import Modal is a separate overlay. It will stack.
+                                }}
+                                className="flex items-center gap-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                            >
+                                <Download className="w-4 h-4" />
+                                Import This Content
+                            </button>
+                            <button
+                                onClick={() => setSelectedNews(null)}
+                                className="px-4 py-2 border bg-white rounded-lg hover:bg-gray-50"
+                            >
+                                Close
                             </button>
                         </div>
                     </div>

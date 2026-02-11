@@ -106,23 +106,31 @@ export async function fetchNewsDetail(url: string): Promise<NewsDetail> {
     const html = await response.text();
     const $ = cheerio.load(html);
 
-    // Common Gnuboard view structure
-    // Title: #bo_v_title .bo_v_tit
-    // Date: #bo_v_info .bo_v_info_lst
-    // Content: #bo_v_con
+    // Common Gnuboard view structure (Custom Theme: sw_gallery_news)
+    // Title: #sh_bo_v .tit
+    // Date: .info ul li (First item)
+    // Content: #bo_v_atc
 
-    const title = $('#bo_v_title .bo_v_tit').text().trim() || $('h1').first().text().trim(); // Fallback
+    let title = $('#sh_bo_v .tit').text().trim();
+    if (!title) {
+        title = $('h1').first().text().trim(); // Fallback
+    }
 
     // Extract date from info area
     let date = '';
-    $('#bo_v_info').text().split(' ').forEach(part => {
-        if (part.match(/\d{4}-\d{2}-\d{2}/)) date = part;
-    });
+    // Structure: <li><b>등록일</b> 25-12-22</li>
+    const infoText = $('.info').text();
+    const dateMatch = infoText.match(/\d{2,4}-\d{2}-\d{2}/);
+    if (dateMatch) {
+        date = dateMatch[0];
+        // Normalize YY-MM-DD to YYYY-MM-DD if needed (assuming 20xx)
+        if (date.match(/^\d{2}-\d{2}-\d{2}$/)) {
+            date = '20' + date;
+        }
+    }
 
     // Content extraction
-    // We want to capture text and images.
-    // We might want to save images as local files later, but for now getting their URLs is fine.
-    const $content = $('#bo_v_con');
+    const $content = $('#bo_v_atc');
 
     // Fix relative image paths in content
     const images: string[] = [];
