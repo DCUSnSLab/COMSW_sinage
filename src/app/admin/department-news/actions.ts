@@ -99,11 +99,17 @@ export async function importNewsContent(url: string, type: 'TEXT' | 'IMAGE') {
             }
         });
 
-        // Mark as imported in DepartmentNews table (optional, but good for UI)
+        // Mark as imported in DepartmentNews table AND update details to match Content
         await prisma.departmentNews.update({
             where: { link: url },
-            data: { isImported: true }
-        }).catch(() => { }); // Ignore if not found in DB (e.g. direct import)
+            data: {
+                isImported: true,
+                title: detail.title, // Ensure title matches Content
+                content: detail.content,
+                images: detail.images,
+                date: detail.date || undefined // Update date if available
+            }
+        }).catch(() => { }); // Ignore if not found in DB
 
         revalidatePath('/admin/department-news');
         return { success: true };

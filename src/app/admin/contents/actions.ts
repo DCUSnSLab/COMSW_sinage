@@ -163,6 +163,21 @@ export async function deleteContent(id: string) {
             const thumbPath = join(process.cwd(), 'public', content.thumbnail);
             try { await unlink(thumbPath); } catch { }
         }
+
+        // SYNC: If this content was imported from Department News, unmark it
+        if (content.source === 'Department News' || content.source?.startsWith('Department News')) {
+            try {
+                // We match by title since we don't store the original link in Content
+                // This assumes titles are unique enough or at least consistent
+                await prisma.departmentNews.updateMany({
+                    where: { title: content.title },
+                    data: { isImported: false }
+                });
+                console.log(`Unmarked Department News as not imported: ${content.title}`);
+            } catch (e) {
+                console.error('Failed to sync Department News status:', e);
+            }
+        }
     }
 
     // First remove complications from any playlists
@@ -174,6 +189,7 @@ export async function deleteContent(id: string) {
         where: { id },
     });
     revalidatePath('/admin/contents');
+    revalidatePath('/admin/department-news');
 }
 
 export async function updateContent(id: string, formData: FormData) {
