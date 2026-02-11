@@ -60,6 +60,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Copy Prisma schema and entrypoint
 COPY --chown=nextjs:nodejs prisma ./prisma
 COPY --chown=nextjs:nodejs docker-entrypoint.sh ./
+RUN sed -i 's/\r$//' docker-entrypoint.sh
 
 # Create uploads directory and set permissions
 RUN mkdir -p public/uploads && chown -R nextjs:nodejs public/uploads

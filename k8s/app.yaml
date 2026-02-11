@@ -35,8 +35,8 @@ spec:
           subPath: uploads
       containers:
       - name: app
-        image: harbor.cu.ac.kr/comsignage/webapp:latest # Replace with your repository URL (e.g., myrepo/signage-app:v1)
-        imagePullPolicy: IfNotPresent # Modify for real registry usage
+        image: harbor.cu.ac.kr/comsignage-dev/webapp:latest # Replace with your repository URL (e.g., myrepo/signage-app:v1)
+        imagePullPolicy: Always # Modify for real registry usage
         ports:
         - containerPort: 3000
           name: http

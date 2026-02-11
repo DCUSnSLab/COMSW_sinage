@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '100mb',
     },
     // Required for src/instrumentation.ts
-    instrumentationHook: true,
+
   },
 };
 
