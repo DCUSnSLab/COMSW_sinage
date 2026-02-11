@@ -17,140 +17,159 @@ interface NewsDetail {
 }
 
 const BASE_URL = 'https://com.cu.ac.kr';
+const TIMEOUT_MS = 10000; // 10 seconds timeout
+
+async function fetchWithTimeout(url: string, options: RequestInit = {}): Promise<Response> {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    const defaultHeaders = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+    };
+
+    try {
+        const response = await fetch(url, {
+            ...options,
+            headers: {
+                ...defaultHeaders,
+                ...options.headers,
+            },
+            signal: controller.signal,
+        });
+        clearTimeout(id);
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        return response;
+    } catch (error) {
+        clearTimeout(id);
+        console.error(`Fetch failed for ${url}:`, error);
+        throw error;
+    }
+}
 
 export async function fetchDepartmentNews(page: number = 1): Promise<NewsItem[]> {
     const url = `${BASE_URL}/bbs/board.php?bo_table=pr_news&page=${page}`;
-    const response = await fetch(url);
-    const html = await response.text();
-    const $ = cheerio.load(html);
-    const items: NewsItem[] = [];
+    try {
+        const response = await fetchWithTimeout(url);
+        const html = await response.text();
+        const $ = cheerio.load(html);
+        const items: NewsItem[] = [];
 
-    // Inspecting the HTML structure from the provided chunk:
-    // It seems like a standard board list.
-    // The structure typically involves a list container (ul or div) and list items (li).
-    // Based on the chunk: "https://com.cu.ac.kr/pr_news/24 ... [경북테크노파크 게임AI 사업 루키 챌린저스 3...]"
-    // It seems the structure might be customized.
+        // Strategy: Find all anchor tags that look like news links.
+        $('a[href*="pr_news"]').each((_, element) => {
+            const $element = $(element);
+            const href = $element.attr('href');
+            if (!href) return;
 
-    // Let's look for the main board list container. Common classes in Korean CMS (Gnuboard): 'tbl_head01', 'list-board', etc.
-    // However, since we don't have the exact HTML, I will assume a generic structure first and refine it.
-    // The chunk shows links like `https://com.cu.ac.kr/pr_news/24`.
-    // This suggests a rewrite rule or a specific href format.
+            // Filter out paging links or other navigation
+            if (!href.match(/\/pr_news\/\d+/)) return;
 
-    // ADJUSTMENT: Based on the text content seen in the previous turn's `view_url_content`:
-    // "https://com.cu.ac.kr/pr_news/24 ... [Title] ..."
-    // It's likely a list of <li> or <div> elements.
+            const title = $element.text().trim();
+            const $container = $element.closest('li'); // Assumption: List item
 
-    // I will try to target typical list elements.
-    // If this fails, I will need to inspect the page source again more carefully.
-    // For now, I'll write a robust selector strategy.
+            let date = '';
+            let thumbnail = '';
 
-    // Strategy: Find all anchor tags that look like news links.
-    $('a[href*="pr_news"]').each((_, element) => {
-        const $element = $(element);
-        const href = $element.attr('href');
-        if (!href) return;
-
-        // Filter out paging links or other navigation
-        if (!href.match(/\/pr_news\/\d+/)) return;
-
-        const title = $element.text().trim();
-        // In many boards, the date is in a sibling element or a child element.
-        // I might need to traverse up to the container <li> or <tr>.
-        const $container = $element.closest('li'); // Assumption: List item
-
-        let date = '';
-        let thumbnail = '';
-
-        // Try to find date in the container
-        // Common classes: 'date', 'datetime', 'td_datetime'
-        // Or just identifying by regex YYYY-MM-DD
-        const containerText = $container.text();
-        const dateMatch = containerText.match(/\d{4}-\d{2}-\d{2}/) || containerText.match(/\d{2}-\d{2}-\d{2}/);
-        if (dateMatch) {
-            date = dateMatch[0];
-        }
-
-        // Try to find thumbnail
-        const $img = $container.find('img');
-        if ($img.length > 0) {
-            thumbnail = $img.attr('src') || '';
-            if (thumbnail && !thumbnail.startsWith('http')) {
-                thumbnail = `${BASE_URL}${thumbnail}`;
+            // Try to find date in the container
+            const containerText = $container.text();
+            const dateMatch = containerText.match(/\d{4}-\d{2}-\d{2}/) || containerText.match(/\d{2}-\d{2}-\d{2}/);
+            if (dateMatch) {
+                date = dateMatch[0];
             }
-        }
 
-        // ID extraction
-        const idMatch = href.match(/\/pr_news\/(\d+)/);
-        const id = idMatch ? idMatch[1] : '';
-
-        if (title && id) {
-            // Dedup: sometimes detailed view links appear multiple times (img + title).
-            // Check if we already have this ID.
-            if (!items.find(i => i.id === id)) {
-                items.push({
-                    id,
-                    title,
-                    date,
-                    link: href.startsWith('http') ? href : `${BASE_URL}${href}`,
-                    thumbnail
-                });
+            // Try to find thumbnail
+            const $img = $container.find('img');
+            if ($img.length > 0) {
+                thumbnail = $img.attr('src') || '';
+                if (thumbnail && !thumbnail.startsWith('http')) {
+                    thumbnail = `${BASE_URL}${thumbnail}`;
+                }
             }
-        }
-    });
 
-    return items;
+            // ID extraction
+            const idMatch = href.match(/\/pr_news\/(\d+)/);
+            const id = idMatch ? idMatch[1] : '';
+
+            if (title && id) {
+                // Dedup
+                if (!items.find(i => i.id === id)) {
+                    items.push({
+                        id,
+                        title,
+                        date,
+                        link: href.startsWith('http') ? href : `${BASE_URL}${href}`,
+                        thumbnail
+                    });
+                }
+            }
+        });
+
+        return items;
+    } catch (error) {
+        console.error(`Failed to fetch news list page ${page}:`, error);
+        return [];
+    }
 }
 
 export async function fetchNewsDetail(url: string): Promise<NewsDetail> {
-    const response = await fetch(url);
-    const html = await response.text();
-    const $ = cheerio.load(html);
+    try {
+        const response = await fetchWithTimeout(url);
+        const html = await response.text();
+        const $ = cheerio.load(html);
 
-    // Common Gnuboard view structure (Custom Theme: sw_gallery_news)
-    // Title: #sh_bo_v .tit
-    // Date: .info ul li (First item)
-    // Content: #bo_v_atc
+        // Common Gnuboard view structure (Custom Theme: sw_gallery_news)
+        // Title: #sh_bo_v .tit
+        // Date: .info ul li (First item)
+        // Content: #bo_v_atc
 
-    let title = $('#sh_bo_v .tit').text().trim();
-    if (!title) {
-        title = $('h1').first().text().trim(); // Fallback
-    }
-
-    // Extract date from info area
-    let date = '';
-    // Structure: <li><b>등록일</b> 25-12-22</li>
-    const infoText = $('.info').text();
-    const dateMatch = infoText.match(/\d{2,4}-\d{2}-\d{2}/);
-    if (dateMatch) {
-        date = dateMatch[0];
-        // Normalize YY-MM-DD to YYYY-MM-DD if needed (assuming 20xx)
-        if (date.match(/^\d{2}-\d{2}-\d{2}$/)) {
-            date = '20' + date;
+        let title = $('#sh_bo_v .tit').text().trim();
+        if (!title) {
+            title = $('h1').first().text().trim(); // Fallback
         }
-    }
 
-    // Content extraction
-    const $content = $('#bo_v_atc');
-
-    // Fix relative image paths in content
-    const images: string[] = [];
-    $content.find('img').each((_, img) => {
-        let src = $(img).attr('src');
-        if (src) {
-            if (!src.startsWith('http')) {
-                src = `${BASE_URL}${src}`;
-                $(img).attr('src', src);
+        // Extract date from info area
+        let date = '';
+        // Structure: <li><b>등록일</b> 25-12-22</li>
+        const infoText = $('.info').text();
+        const dateMatch = infoText.match(/\d{2,4}-\d{2}-\d{2}/);
+        if (dateMatch) {
+            date = dateMatch[0];
+            // Normalize YY-MM-DD to YYYY-MM-DD if needed (assuming 20xx)
+            if (date.match(/^\d{2}-\d{2}-\d{2}$/)) {
+                date = '20' + date;
             }
-            images.push(src);
         }
-    });
 
-    const content = $content.html() || '';
+        // Content extraction
+        const $content = $('#bo_v_atc');
 
-    return {
-        title,
-        date,
-        content,
-        images
-    };
+        // Fix relative image paths in content
+        const images: string[] = [];
+        $content.find('img').each((_, img) => {
+            let src = $(img).attr('src');
+            if (src) {
+                if (!src.startsWith('http')) {
+                    src = `${BASE_URL}${src}`;
+                    $(img).attr('src', src);
+                }
+                images.push(src);
+            }
+        });
+
+        const content = $content.html() || '';
+
+        return {
+            title,
+            date,
+            content,
+            images
+        };
+    } catch (error) {
+        console.error(`Failed to fetch news detail ${url}:`, error);
+        throw error;
+    }
 }

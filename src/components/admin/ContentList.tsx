@@ -780,7 +780,7 @@ export function ContentList({ initialContents }: { initialContents: Content[] })
                                             <div className="font-medium truncate max-w-[200px] xl:max-w-[400px]" title={content.title}>{content.title}</div>
                                             <div className="flex gap-1 mt-1">
                                                 {(content as any).source && (
-                                                    <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-sm truncate max-w-[100px]" title={(content as any).source}>
+                                                    <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-sm" title={(content as any).source}>
                                                         {(content as any).source}
                                                     </span>
                                                 )}
@@ -898,7 +898,7 @@ export function ContentList({ initialContents }: { initialContents: Content[] })
 
                                     <div className="flex flex-wrap gap-1">
                                         {(content as any).source && (
-                                            <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-sm font-medium truncate max-w-[100px]" title={(content as any).source}>
+                                            <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-sm font-medium" title={(content as any).source}>
                                                 {(content as any).source}
                                             </span>
                                         )}

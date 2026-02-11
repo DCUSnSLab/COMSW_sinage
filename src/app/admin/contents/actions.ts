@@ -104,6 +104,10 @@ export async function createContent(formData: FormData) {
                         reject(new Error(`Failed to parse Python output: ${dataString}`));
                     }
                 });
+
+                pyProcess.on('error', (err) => {
+                    reject(new Error(`Python script failed to start: ${err.message}`));
+                });
             });
 
             if (pythonResult.filename) {

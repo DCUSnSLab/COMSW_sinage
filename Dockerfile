@@ -50,6 +50,9 @@ ENV NODE_ENV production
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
+RUN apk add --no-cache python3 py3-pip
+RUN pip3 install pytubefix --break-system-packages
+
 COPY --from=builder /app/public ./public
 
 # Automatically leverage output traces to reduce image size
@@ -60,6 +63,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Copy Prisma schema and entrypoint
 COPY --chown=nextjs:nodejs prisma ./prisma
 COPY --chown=nextjs:nodejs docker-entrypoint.sh ./
+COPY --chown=nextjs:nodejs src/scripts ./src/scripts
 RUN sed -i 's/\r$//' docker-entrypoint.sh
 
 # Create uploads directory and set permissions
