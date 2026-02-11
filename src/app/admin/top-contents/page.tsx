@@ -217,11 +217,12 @@ export default function TopContentsPage() {
                         </CardHeader>
                         <CardContent>
                             <div className="border rounded-lg overflow-hidden">
-                                <div className="grid grid-cols-7 bg-gray-50 border-b divide-x">
-                                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                                <div className="grid grid-cols-7 bg-gray-50 border-b">
+                                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, i) => (
                                         <div key={d} className={cn(
                                             "py-2 text-center text-sm font-medium",
-                                            d === 'Sun' ? "text-red-500" : "text-gray-500"
+                                            d === 'Sun' ? "text-red-500" : "text-gray-500",
+                                            i !== 6 && "border-r border-gray-200"
                                         )}>
                                             {d}
                                         </div>
@@ -238,13 +239,14 @@ export default function TopContentsPage() {
                                         const cellHeight = Math.max(minHeight, dynamicHeight);
 
                                         return (
-                                            <div key={weekIdx} className="grid grid-cols-7 divide-x relative group">
+                                            <div key={weekIdx} className="grid grid-cols-7 relative group">
                                                 {/* Background Cells */}
                                                 {week.map((day) => {
                                                     const isTargetMonth = isSameMonth(day, monthStart);
                                                     const isToday = isSameDay(day, new Date());
                                                     const isSelected = selectedDate && isSameDay(day, selectedDate);
                                                     const isSunday = day.getDay() === 0;
+                                                    const isSaturday = day.getDay() === 6;
 
                                                     return (
                                                         <div
@@ -254,7 +256,8 @@ export default function TopContentsPage() {
                                                                 "relative cursor-pointer transition hover:bg-gray-50",
                                                                 !isTargetMonth && "bg-gray-50/30 text-gray-400",
                                                                 isToday && "bg-blue-50/30",
-                                                                isSelected && "ring-2 ring-inset ring-blue-500"
+                                                                isSelected && "ring-2 ring-inset ring-blue-500",
+                                                                !isSaturday && "border-r border-gray-200"
                                                             )}
                                                             style={{ height: cellHeight }}
                                                         >
