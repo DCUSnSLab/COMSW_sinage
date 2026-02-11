@@ -7,7 +7,8 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 1Gi # Adjust as needed
+      storage: 10Gi # Adjust as needed
+        #  storageClassName: "openebs-hostpath"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -26,7 +27,7 @@ spec:
     spec:
       containers:
       - name: postgres
-        image: postgres:15-alpine
+        image: harbor.cu.ac.kr/postgresql/postgresql-16.3-huge-pages:latest
         env:
         - name: POSTGRES_USER
           value: "postgres"
@@ -34,6 +35,8 @@ spec:
           value: "postgres"
         - name: POSTGRES_DB
           value: "signage"
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
         ports:
         - containerPort: 5432
           name: postgres
