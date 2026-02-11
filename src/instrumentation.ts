@@ -57,7 +57,7 @@ export async function register() {
                                     await downloadAndSaveVideo(
                                         video.url,
                                         video.title,
-                                        video.description,
+                                        video.title, // Body is now just the title
                                         settings.name,
                                         settings.playlistId || undefined
                                     );

@@ -90,7 +90,20 @@ export async function POST(request: Request) {
             publishedAt: v.published
         }));
 
-        return NextResponse.json({ videos: filteredVideos });
+        // 4. Filter out already existing contents (by Title)
+        const { prisma } = await import('@/lib/db');
+        const existingContents = await prisma.content.findMany({
+            where: {
+                title: { in: filteredVideos.map(v => v.title) },
+                type: 'VIDEO'
+            },
+            select: { title: true }
+        });
+
+        const existingTitles = new Set(existingContents.map(c => c.title));
+        const finalVideos = filteredVideos.filter(v => !existingTitles.has(v.title));
+
+        return NextResponse.json({ videos: finalVideos });
 
     } catch (error) {
         console.error('Crawl Error:', error);
