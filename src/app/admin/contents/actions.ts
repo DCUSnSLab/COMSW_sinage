@@ -210,12 +210,14 @@ export async function getPlaylists() {
 export async function getCrawlSettingsList() {
     try {
         return await prisma.crawlSettings.findMany({
+            where: { type: { not: 'DEPARTMENT_NEWS' } },
             orderBy: { updatedAt: 'desc' },
             include: { playlist: true }
         });
     } catch (e) {
         console.error("Failed to fetch with playlist relation, falling back to basic fetch:", e);
         return await prisma.crawlSettings.findMany({
+            where: { type: { not: 'DEPARTMENT_NEWS' } },
             orderBy: { updatedAt: 'desc' }
         });
     }
