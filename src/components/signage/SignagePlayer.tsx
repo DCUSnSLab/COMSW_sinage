@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSignageLoop, SignageContent } from '@/hooks/useSignageLoop';
 import ContentRenderer from './ContentRenderer';
 import InfoWidget from './InfoWidget';
@@ -49,12 +49,34 @@ export default function SignagePlayer({ deviceId }: PlayerProps) {
     const [error, setError] = useState<string | null>(null);
     const [showMap, setShowMap] = useState(false);
 
+    const showMapRef = useRef(false);
+    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Sync ref with state
+    useEffect(() => {
+        showMapRef.current = showMap;
+    }, [showMap]);
+
     // Global key listener for Map
     useEffect(() => {
-        let timeoutId: NodeJS.Timeout;
-
         const handleKeyDown = async (e: KeyboardEvent) => {
             if (e.key === 'Enter') {
+                // TOGGLE LOGIC:
+                // If map is OPEN -> Close it.
+                if (showMapRef.current) {
+                    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                    setShowMap(false);
+                    if (document.fullscreenElement) {
+                        try {
+                            await document.exitFullscreen();
+                        } catch (err) {
+                            console.error("Exit FS Error:", err);
+                        }
+                    }
+                    return;
+                }
+
+                // If map is CLOSED -> Open it.
                 try {
                     // 1. Enter Fullscreen
                     if (!document.fullscreenElement) {
@@ -64,22 +86,25 @@ export default function SignagePlayer({ deviceId }: PlayerProps) {
                     // 2. Show Map
                     setShowMap(true);
 
-                    // 3. Clear existing timeout if any (restart timer)
-                    if (timeoutId) clearTimeout(timeoutId);
+                    // 3. Clear existing timeout if any
+                    if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
                     // 4. Set 15s timeout to close
-                    timeoutId = setTimeout(async () => {
+                    timeoutRef.current = setTimeout(async () => {
                         setShowMap(false);
                         if (document.fullscreenElement) {
-                            await document.exitFullscreen().catch(err => console.error("Exit FS Error:", err));
+                            try {
+                                await document.exitFullscreen();
+                            } catch (err) {
+                                console.error("Exit FS Error:", err);
+                            }
                         }
                     }, 15000);
 
                 } catch (err) {
                     console.error("Map/Fullscreen Error:", err);
-                    // Still show map even if fullscreen fails
                     setShowMap(true);
-                    timeoutId = setTimeout(() => setShowMap(false), 15000);
+                    timeoutRef.current = setTimeout(() => setShowMap(false), 15000);
                 }
             }
         };
@@ -88,7 +113,7 @@ export default function SignagePlayer({ deviceId }: PlayerProps) {
 
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
-            if (timeoutId) clearTimeout(timeoutId);
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
         };
     }, []);
 
