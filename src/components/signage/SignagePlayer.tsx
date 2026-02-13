@@ -67,19 +67,19 @@ export default function SignagePlayer({ deviceId }: PlayerProps) {
                     // 3. Clear existing timeout if any (restart timer)
                     if (timeoutId) clearTimeout(timeoutId);
 
-                    // 4. Set 10s timeout to close
+                    // 4. Set 15s timeout to close
                     timeoutId = setTimeout(async () => {
                         setShowMap(false);
                         if (document.fullscreenElement) {
                             await document.exitFullscreen().catch(err => console.error("Exit FS Error:", err));
                         }
-                    }, 10000);
+                    }, 15000);
 
                 } catch (err) {
                     console.error("Map/Fullscreen Error:", err);
                     // Still show map even if fullscreen fails
                     setShowMap(true);
-                    timeoutId = setTimeout(() => setShowMap(false), 10000);
+                    timeoutId = setTimeout(() => setShowMap(false), 15000);
                 }
             }
         };

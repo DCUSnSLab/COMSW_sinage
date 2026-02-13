@@ -16,7 +16,7 @@ export default function MapOverlay() {
             </div>
 
             <div className="absolute top-4 right-4 text-white/50 text-sm">
-                10초 후 자동으로 닫힙니다...
+                15초 후 자동으로 닫힙니다...
             </div>
         </div>
     );
