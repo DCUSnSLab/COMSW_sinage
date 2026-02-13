@@ -5,6 +5,7 @@ import { useSignageLoop, SignageContent } from '@/hooks/useSignageLoop';
 import ContentRenderer from './ContentRenderer';
 import InfoWidget from './InfoWidget';
 import TopWidgetPlayer from './TopWidgetPlayer';
+import MapOverlay from './MapOverlay';
 
 interface PlayerProps {
     deviceId: string;
@@ -46,6 +47,50 @@ export default function SignagePlayer({ deviceId }: PlayerProps) {
     const [data, setData] = useState<DeviceData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [showMap, setShowMap] = useState(false);
+
+    // Global key listener for Map
+    useEffect(() => {
+        let timeoutId: NodeJS.Timeout;
+
+        const handleKeyDown = async (e: KeyboardEvent) => {
+            if (e.key === 'Enter') {
+                try {
+                    // 1. Enter Fullscreen
+                    if (!document.fullscreenElement) {
+                        await document.documentElement.requestFullscreen();
+                    }
+
+                    // 2. Show Map
+                    setShowMap(true);
+
+                    // 3. Clear existing timeout if any (restart timer)
+                    if (timeoutId) clearTimeout(timeoutId);
+
+                    // 4. Set 10s timeout to close
+                    timeoutId = setTimeout(async () => {
+                        setShowMap(false);
+                        if (document.fullscreenElement) {
+                            await document.exitFullscreen().catch(err => console.error("Exit FS Error:", err));
+                        }
+                    }, 10000);
+
+                } catch (err) {
+                    console.error("Map/Fullscreen Error:", err);
+                    // Still show map even if fullscreen fails
+                    setShowMap(true);
+                    timeoutId = setTimeout(() => setShowMap(false), 10000);
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            if (timeoutId) clearTimeout(timeoutId);
+        };
+    }, []);
 
     // Poll for updates every 5 seconds
     useEffect(() => {
@@ -129,6 +174,7 @@ export default function SignagePlayer({ deviceId }: PlayerProps) {
                     </div>
                 </div>
                 <Marquee notices={notices} />
+                {showMap && <MapOverlay />}
             </div>
         );
     }
@@ -151,17 +197,19 @@ export default function SignagePlayer({ deviceId }: PlayerProps) {
                     </div>
                 </div>
                 <Marquee notices={notices} />
+                {showMap && <MapOverlay />}
             </div>
         );
     }
 
     // Full Screen Mode
     return (
-        <div className="relative w-full h-screen bg-black overflow-hidden">
+        <div className="relative w-full h-full bg-black overflow-hidden">
             <div className={`w-full relative ${contentClass}`}>
                 <ContentRenderer content={mainItem} />
             </div>
             <Marquee notices={notices} />
+            {showMap && <MapOverlay />}
         </div>
     );
 }
