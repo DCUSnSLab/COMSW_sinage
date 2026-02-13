@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/db';
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(
     request: Request,
     { params }: { params: Promise<{ deviceId: string }> }
@@ -27,7 +29,27 @@ export async function GET(
                     }
                 }
             }
+
         });
+
+        if (!device) {
+            return NextResponse.json({ error: 'Device not found' }, { status: 404 });
+        }
+
+        // Manually fetch crawlPlaylist if needed
+        // This avoids "Unknown argument crawlPlaylist" validation error in cached clients
+        let crawlPlaylist = null;
+        if (device.crawlPlaylistId) {
+            crawlPlaylist = await prisma.playlist.findUnique({
+                where: { id: device.crawlPlaylistId },
+                include: {
+                    contents: {
+                        include: { content: true },
+                        orderBy: { displayOrder: 'asc' }
+                    }
+                }
+            });
+        }
 
         if (!device) {
             return NextResponse.json({ error: 'Device not found' }, { status: 404 });
@@ -58,14 +80,23 @@ export async function GET(
         // --- Interleaving Logic ---
         let finalContents = [...validContents];
 
-        // Cast device to any to access new fields before regeneration
+        // Cast device to any to access new fields (crawlerInterval)
         const d = device as any;
 
-        if (d.crawlPlaylistId && d.crawlPlaylist) {
+        console.log(`[API Debug] Device: ${d.name}, CrawlPlaylistId: ${d.crawlPlaylistId}`);
+        if (crawlPlaylist) {
+            console.log(`[API Debug] CrawlPlaylist Contents: ${crawlPlaylist.contents.length}`);
+        } else {
+            console.log(`[API Debug] CrawlPlaylist is NULL`);
+        }
+
+        if (d.crawlPlaylistId && crawlPlaylist) {
             // Get crawler contents
-            const crawlerContentsRaw = d.crawlPlaylist.contents
+            const crawlerContentsRaw = crawlPlaylist.contents
                 .map((pc: any) => pc.content) // Cast pc to any
                 .filter((c: any) => c.isActive);
+
+            console.log(`[API Debug] Active Crawler Contents: ${crawlerContentsRaw.length}`);
 
             if (crawlerContentsRaw.length > 0) {
                 const interval = d.crawlerInterval || 5;
@@ -73,20 +104,51 @@ export async function GET(
                 let crawlerIndex = 0;
                 let itemsSinceLastCrawl = 0;
 
-                for (const content of validContents) {
-                    mixed.push(content);
+                // Calculate total slots needed to show all crawler items
+                // We need to insert crawler items until we wrap around the crawler list at least once
+                // OR we just ensure we have enough main items.
+                // Strategy: Repeat validContents until we have shown all crawler items.
 
-                    // Only increment counter for MAIN zone items to ensure correct interval in Main loop
-                    if (!content.zone || content.zone === 'MAIN') {
-                        itemsSinceLastCrawl++;
+                let crawlerWrapCount = 0;
+                let processedMainCount = 0;
+
+                // Safety break to prevent infinite loops if something is wrong (e.g. interval 0)
+                const MAX_LOOPS = 5;
+                let loopCount = 0;
+
+                while (true) {
+                    loopCount++;
+
+                    for (const content of validContents) {
+                        mixed.push(content);
+
+                        // Increment counter (MAIN zone only)
+                        if (!content.zone || content.zone === 'MAIN') {
+                            itemsSinceLastCrawl++;
+                            processedMainCount++;
+                        }
+
+                        if (itemsSinceLastCrawl >= interval) {
+                            mixed.push(crawlerContentsRaw[crawlerIndex % crawlerContentsRaw.length]);
+                            crawlerIndex++;
+                            itemsSinceLastCrawl = 0;
+                        }
                     }
 
-                    if (itemsSinceLastCrawl >= interval) {
-                        mixed.push(crawlerContentsRaw[crawlerIndex % crawlerContentsRaw.length]);
-                        crawlerIndex++;
-                        itemsSinceLastCrawl = 0;
+                    // Look ahead: Have we shown all crawler items?
+                    // basic check: if we have inserted enough crawler items to cover the list length
+                    if (crawlerIndex >= crawlerContentsRaw.length) {
+                        break;
                     }
+
+                    if (loopCount >= MAX_LOOPS) {
+                        console.warn('[Signage API] Max loops reached for interleaving.');
+                        break;
+                    }
+
+                    // If we haven't shown all crawler items, loop the main playlist again
                 }
+
                 finalContents = mixed;
             }
         }

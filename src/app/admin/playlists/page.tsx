@@ -6,7 +6,7 @@ export default async function PlaylistsPage() {
     const playlists = await prisma.playlist.findMany({
         include: {
             _count: {
-                select: { contents: true, devices: true }
+                select: { contents: true, devices: true, crawledByDevices: true }
             }
         },
         orderBy: { createdAt: 'desc' },

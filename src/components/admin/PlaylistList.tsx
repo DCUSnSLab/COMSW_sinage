@@ -17,6 +17,7 @@ type PlaylistWithCounts = {
     _count: {
         contents: number;
         devices: number;
+        crawledByDevices: number;
     }
 };
 
@@ -191,7 +192,7 @@ export function PlaylistList({ initialPlaylists }: { initialPlaylists: PlaylistW
                             <div className="flex items-center justify-between text-xs text-gray-400 border-t pt-3">
                                 <div className="flex gap-4">
                                     <span>{playlist._count.contents} Contents</span>
-                                    <span>{playlist._count.devices} Devices</span>
+                                    <span>{playlist._count.devices + playlist._count.crawledByDevices} Devices</span>
                                 </div>
                                 <Link
                                     href={`/admin/playlists/${playlist.id}`}
