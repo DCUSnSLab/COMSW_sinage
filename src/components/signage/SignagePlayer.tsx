@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSignageLoop, SignageContent } from '@/hooks/useSignageLoop';
 import ContentRenderer from './ContentRenderer';
 import InfoWidget from './InfoWidget';
 import TopWidgetPlayer from './TopWidgetPlayer';
+import MapOverlay from './MapOverlay';
 
 interface PlayerProps {
     deviceId: string;
@@ -46,6 +47,75 @@ export default function SignagePlayer({ deviceId }: PlayerProps) {
     const [data, setData] = useState<DeviceData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [showMap, setShowMap] = useState(false);
+
+    const showMapRef = useRef(false);
+    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Sync ref with state
+    useEffect(() => {
+        showMapRef.current = showMap;
+    }, [showMap]);
+
+    // Global key listener for Map
+    useEffect(() => {
+        const handleKeyDown = async (e: KeyboardEvent) => {
+            if (e.key === 'Enter') {
+                // TOGGLE LOGIC:
+                // If map is OPEN -> Close it.
+                if (showMapRef.current) {
+                    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                    setShowMap(false);
+                    if (document.fullscreenElement) {
+                        try {
+                            await document.exitFullscreen();
+                        } catch (err) {
+                            console.error("Exit FS Error:", err);
+                        }
+                    }
+                    return;
+                }
+
+                // If map is CLOSED -> Open it.
+                try {
+                    // 1. Enter Fullscreen
+                    if (!document.fullscreenElement) {
+                        await document.documentElement.requestFullscreen();
+                    }
+
+                    // 2. Show Map
+                    setShowMap(true);
+
+                    // 3. Clear existing timeout if any
+                    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
+                    // 4. Set 15s timeout to close
+                    timeoutRef.current = setTimeout(async () => {
+                        setShowMap(false);
+                        if (document.fullscreenElement) {
+                            try {
+                                await document.exitFullscreen();
+                            } catch (err) {
+                                console.error("Exit FS Error:", err);
+                            }
+                        }
+                    }, 15000);
+
+                } catch (err) {
+                    console.error("Map/Fullscreen Error:", err);
+                    setShowMap(true);
+                    timeoutRef.current = setTimeout(() => setShowMap(false), 15000);
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        };
+    }, []);
 
     // Poll for updates every 5 seconds
     useEffect(() => {
@@ -129,6 +199,7 @@ export default function SignagePlayer({ deviceId }: PlayerProps) {
                     </div>
                 </div>
                 <Marquee notices={notices} />
+                {showMap && <MapOverlay />}
             </div>
         );
     }
@@ -151,17 +222,19 @@ export default function SignagePlayer({ deviceId }: PlayerProps) {
                     </div>
                 </div>
                 <Marquee notices={notices} />
+                {showMap && <MapOverlay />}
             </div>
         );
     }
 
     // Full Screen Mode
     return (
-        <div className="relative w-full h-screen bg-black overflow-hidden">
+        <div className="relative w-full h-full bg-black overflow-hidden">
             <div className={`w-full relative ${contentClass}`}>
                 <ContentRenderer content={mainItem} />
             </div>
             <Marquee notices={notices} />
+            {showMap && <MapOverlay />}
         </div>
     );
 }
