@@ -9,6 +9,7 @@ export interface SignageContent {
     body: string | null;
     duration: number;
     zone?: string;
+    isMuted?: boolean;
 }
 
 export function useSignageLoop(initialContents: SignageContent[]) {

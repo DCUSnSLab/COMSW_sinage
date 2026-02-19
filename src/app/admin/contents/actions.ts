@@ -13,6 +13,7 @@ export async function createContent(formData: FormData) {
 
     let url = '';
     const body = formData.get('body') as string || ''; // Read body for all types
+    const isMuted = formData.get('isMuted') === 'on';
 
     if (type === 'TEXT') {
         // Body is already read above
@@ -134,6 +135,7 @@ export async function createContent(formData: FormData) {
             body,
             duration: finalDuration,
             isActive: true, // Default active
+            isMuted,
         },
     });
 
@@ -182,6 +184,7 @@ export async function updateContent(id: string, formData: FormData) {
     const duration = parseInt(formData.get('duration') as string);
     const startDateRaw = formData.get('startDate') as string;
     const endDateRaw = formData.get('endDate') as string;
+    const isMuted = formData.get('isMuted') === 'on';
 
     await prisma.content.update({
         where: { id },
@@ -191,6 +194,7 @@ export async function updateContent(id: string, formData: FormData) {
             duration,
             startDate: startDateRaw ? new Date(startDateRaw) : null,
             endDate: endDateRaw ? new Date(endDateRaw) : null,
+            isMuted,
         }
     });
     revalidatePath('/admin/contents');

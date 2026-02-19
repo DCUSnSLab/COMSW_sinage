@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: signage-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: signage-app
+  template:
+    metadata:
+      labels:
+        app: signage-app
+    spec:
+      # 메인 컨테이너가 실행되기 전에 먼저 실행됨
+      initContainers:
+      - name: db-migration
+        image: harbor.cu.ac.kr/comsignage/webapp:latest
+        command: ["npx", "prisma", "migrate", "deploy"]
+        envFrom:
+        - configMapRef:
+            name: signage-config
+        - secretRef:
+            name: signage-secrets
+      - name: fix-permissions
+      - name: fix-permissions
+        image: busybox  # 가벼운 리눅스 이미지
+        command: ["sh", "-c", "chown -R 1001:1001 /app/public/uploads"]
+        volumeMounts:
+        - name: app-uploads-storage  # 메인 컨테이너와 동일한 볼륨 이름
+          mountPath: /app/public/uploads
+          subPath: uploads
+      containers:
+      - name: app
+        image: harbor.cu.ac.kr/comsignage/webapp:latest # Replace with your repository URL (e.g., myrepo/signage-app:v1)
+        imagePullPolicy: Always #leacy: IfNotPresent # Modify for real registry usage
+        ports:
+        - containerPort: 3000
+          name: http
+        env:
+        - name: SKIP_MIGRATION
+          value: "true"
+        envFrom:
+        - configMapRef:
+            name: signage-config
+        - secretRef:
+            name: signage-secrets
+        volumeMounts:
+        - name: app-uploads-storage
+          mountPath: /app/public/uploads
+          subPath: uploads
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+      volumes:
+      - name: app-uploads-storage
+        persistentVolumeClaim:
+          claimName: app-uploads-pvc

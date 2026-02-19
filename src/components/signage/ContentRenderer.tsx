@@ -55,7 +55,7 @@ export default function ContentRenderer({ content }: { content: SignageContent |
 
     useEffect(() => {
         if (content?.type === 'VIDEO' && videoRef.current) {
-            videoRef.current.muted = true; // Ensure muted for autoplay
+            videoRef.current.muted = content.isMuted ?? true; // Ensure muted state matches config
             videoRef.current.play().catch(e => {
                 if (e.name !== 'AbortError') {
                     console.error("Autoplay failed:", e);
@@ -73,7 +73,7 @@ export default function ContentRenderer({ content }: { content: SignageContent |
                         src={content.url}
                         className="w-full h-full object-contain"
                         autoPlay
-                        muted
+                        muted={content.isMuted ?? true}
                         loop
                         playsInline
                     />

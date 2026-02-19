@@ -35,6 +35,7 @@ model Content {
   startDate   DateTime?
   endDate     DateTime?
   isActive    Boolean  @default(true)
+  isMuted     Boolean  @default(true)
   source      String?  // e.g. "YouTube: Channel Name" or "Manual"
   createdAt   DateTime @default(now())
   

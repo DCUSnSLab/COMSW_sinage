@@ -663,6 +663,13 @@ export function ContentList({ initialContents }: { initialContents: Content[] })
                                 <input name="duration" type="number" defaultValue={10} className="w-full px-3 py-2 border rounded-md" />
                             </div>
 
+                            {selectedType === 'VIDEO' && (
+                                <div className="flex items-center gap-2 md:col-span-1 pt-6">
+                                    <input type="checkbox" name="isMuted" defaultChecked id="create-muted" className="w-4 h-4 rounded border-gray-300" />
+                                    <label htmlFor="create-muted" className="text-sm font-medium select-none cursor-pointer">Start Muted</label>
+                                </div>
+                            )}
+
                             <div className="md:col-span-2 border-t pt-4 space-y-4">
                                 <div>
                                     <label className="text-sm font-medium">Message / Description</label>
@@ -710,6 +717,18 @@ export function ContentList({ initialContents }: { initialContents: Content[] })
                                         <label className="text-sm font-medium">Duration (Sec)</label>
                                         <input name="duration" type="number" defaultValue={editingContent.duration} className="w-full px-3 py-2 border rounded-md" />
                                     </div>
+                                    {editingContent.type === 'VIDEO' && (
+                                        <div className="flex items-center gap-2 pt-6">
+                                            <input
+                                                type="checkbox"
+                                                name="isMuted"
+                                                defaultChecked={(editingContent as any).isMuted ?? true}
+                                                id="edit-muted"
+                                                className="w-4 h-4 rounded border-gray-300"
+                                            />
+                                            <label htmlFor="edit-muted" className="text-sm font-medium select-none cursor-pointer">Start Muted</label>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
